@@ -1,0 +1,236 @@
+// ============================================================
+// BaristaOS - Database Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// Listas de valores fijos - como opciones de un select
+// ============================================================
+
+enum CategoryType {
+  INGREDIENT
+  RECIPE
+}
+
+enum RecipeStatus {
+  ACTIVE
+  INACTIVE
+  SEASONAL
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum SaleChannel {
+  IN_STORE  // en el local
+  TAKEOUT   // para llevar
+  DELIVERY  // a domicilio
+}
+
+enum MovementType {
+  PURCHASE   // reabastecimiento de ingrediente
+  SALE_USE   // descuento automático por venta
+  ADJUSTMENT // ajuste manual de inventario
+  WASTE      // merma registrada
+}
+
+// ============================================================
+// MODELS
+// Cada model = una tabla en la base de datos
+// ============================================================
+
+// ------------------------------------------------------------
+// Supplier - Proveedores de ingredientes
+// ------------------------------------------------------------
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  ingredients Ingredient[]
+}
+
+// ------------------------------------------------------------
+// Category - Categorías para ingredientes y recetas
+// ------------------------------------------------------------
+model Category {
+  id    String       @id @default(cuid())
+  name  String
+  type  CategoryType
+  color String? // color hex para la UI, ej: "#FF5733"
+
+  // Relaciones
+  ingredients Ingredient[]
+  recipes     Recipe[]
+
+  @@unique([name, type]) // no puede haber dos categorías con el mismo nombre y tipo
+}
+
+// ------------------------------------------------------------
+// Ingredient - Ingredientes del negocio
+// ------------------------------------------------------------
+model Ingredient {
+  id   String @id @default(cuid())
+  name String
+
+  // Unidades de medida
+  // Ejemplo: compras en "litro" pero la receta usa "ml"
+  baseUnit         String  // unidad que usa la receta: ml, g, unidad
+  purchaseUnit     String  // unidad de compra: litro, kg, paquete
+  conversionFactor Decimal // 1 purchaseUnit = X baseUnits (ej: 1 litro = 1000 ml)
+
+  // Precios e inventario
+  purchasePrice   Decimal // precio por purchaseUnit
+  currentStock    Decimal // stock actual en purchaseUnit
+  minimumStock    Decimal // stock mínimo antes de alertar
+  wastePercentage Decimal @default(0) // % de merma estimada
+
+  // Estado
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones opcionales
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  // Relaciones inversas
+  recipeItems    RecipeItem[]
+  stockMovements StockMovement[]
+}
+
+// ------------------------------------------------------------
+// Recipe - Recetas / bebidas del menú
+// ------------------------------------------------------------
+model Recipe {
+  id              String       @id @default(cuid())
+  name            String
+  description     String?
+  imageUrl        String?
+  prepTimeMinutes Int?
+  status          RecipeStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relaciones
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  variants  RecipeVariant[]
+  saleItems SaleItem[]
+}
+
+// ------------------------------------------------------------
+// RecipeVariant - Tamaños de cada receta
+// Ejemplo: Frappé Moka → Chico, Mediano, Grande
+// ------------------------------------------------------------
+model RecipeVariant {
+  id        String  @id @default(cuid())
+  size      String  // "Chico", "Mediano", "Grande", "Único"
+  salePrice Decimal // precio de venta al público
+
+  // Relación con la receta padre
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  // Relaciones
+  items     RecipeItem[]
+  saleItems SaleItem[]
+
+  @@unique([recipeId, size]) // no puede haber dos tamaños iguales en la misma receta
+}
+
+// ------------------------------------------------------------
+// RecipeItem - Ingredientes que componen una variante de receta
+// ------------------------------------------------------------
+model RecipeItem {
+  id       String  @id @default(cuid())
+  quantity Decimal // cantidad en baseUnit del ingrediente
+
+  // Relaciones
+  recipeVariantId String
+  recipeVariant   RecipeVariant @relation(fields: [recipeVariantId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([recipeVariantId, ingredientId]) // un ingrediente no puede repetirse en la misma variante
+}
+
+// ------------------------------------------------------------
+// Sale - Ventas registradas
+// ------------------------------------------------------------
+model Sale {
+  id        String      @id @default(cuid())
+  folio     String      @unique // número legible: VTA-0001
+  status    SaleStatus  @default(COMPLETED)
+  channel   SaleChannel @default(IN_STORE)
+  notes     String?
+  discount  Decimal     @default(0)
+  createdAt DateTime    @default(now())
+
+  // Relaciones
+  items SaleItem[]
+}
+
+// ------------------------------------------------------------
+// SaleItem - Productos dentro de una venta
+// ------------------------------------------------------------
+model SaleItem {
+  id       String  @id @default(cuid())
+  quantity Int
+  // Guardamos snapshot del precio y costo al momento de vender
+  // Esto es crítico: si mañana sube el costo del café,
+  // las ventas pasadas siguen reflejando lo que realmente costó
+  unitPrice Decimal
+  unitCost  Decimal
+
+  // Relaciones
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id])
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id])
+
+  recipeVariantId String
+  recipeVariant   RecipeVariant @relation(fields: [recipeVariantId], references: [id])
+}
+
+// ------------------------------------------------------------
+// StockMovement - Historial de movimientos de inventario
+// Nunca se borra - solo se agrega (como un libro contable)
+// ------------------------------------------------------------
+model StockMovement {
+  id       String       @id @default(cuid())
+  type     MovementType
+  quantity Decimal      // positivo = entrada, negativo = salida
+  reason   String?
+  createdAt DateTime    @default(now())
+
+  // Relación
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+}
