@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { IngredientWithRelations } from '@/types/ingredient'
 
 interface Category {
   id: string
@@ -18,25 +19,8 @@ interface Category {
   color: string | null
 }
 
-interface Ingredient {
-  id: string
-  name: string
-  baseUnit: string
-  purchaseUnit: string
-  conversionFactor: unknown
-  purchasePrice: unknown
-  currentStock: unknown
-  minimumStock: unknown
-  wastePercentage: unknown
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-  category: Category | null
-  supplier: { id: string; name: string } | null
-}
-
 interface IngredientsClientProps {
-  ingredients: Ingredient[]
+  ingredients: IngredientWithRelations[]
   categories: Category[]
 }
 
@@ -46,15 +30,14 @@ export function IngredientsClient({
 }: IngredientsClientProps) {
   const [search, setSearch] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
-    null
-  )
+  const [editingIngredient, setEditingIngredient] =
+    useState<IngredientWithRelations | null>(null)
 
   const filtered = ingredients.filter((ing) =>
     ing.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  function handleEdit(ingredient: Ingredient) {
+  function handleEdit(ingredient: IngredientWithRelations) {
     setEditingIngredient(ingredient)
     setIsFormOpen(true)
   }
@@ -66,7 +49,6 @@ export function IngredientsClient({
 
   return (
     <div className="space-y-4">
-      {/* Barra de acciones */}
       <div className="flex items-center justify-between gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
@@ -84,10 +66,8 @@ export function IngredientsClient({
         </Button>
       </div>
 
-      {/* Tabla */}
       <IngredientTable ingredients={filtered} onEdit={handleEdit} />
 
-      {/* Modal del formulario */}
       <Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

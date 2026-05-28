@@ -22,19 +22,6 @@ export type IngredientWithRelations = {
   } | null
 }
 
-export type IngredientFormData = {
-  name: string
-  baseUnit: string
-  purchaseUnit: string
-  conversionFactor: number
-  purchasePrice: number
-  currentStock: number
-  minimumStock: number
-  wastePercentage: number
-  categoryId?: string
-  supplierId?: string
-}
-
 export type StockStatus = 'healthy' | 'low' | 'critical'
 
 export function getStockStatus(
@@ -46,8 +33,6 @@ export function getStockStatus(
   return 'healthy'
 }
 
-// Calcula el costo por unidad base del ingrediente
-// Ejemplo: café a $320/kg con factor 1000 → $0.32 por gramo
 export function calculateIngredientUnitCost(
   purchasePrice: number,
   conversionFactor: number,

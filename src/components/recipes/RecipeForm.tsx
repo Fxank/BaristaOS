@@ -241,7 +241,12 @@ export function RecipeForm({
 
           <div>
             <Label>Estado</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(val) =>
+                val && setStatus(val as 'ACTIVE' | 'INACTIVE' | 'SEASONAL')
+              }
+            >
               <SelectTrigger className="mt-1">
                 <SelectValue>
                   {STATUS_OPTIONS.find((s) => s.value === status)?.label}
@@ -259,7 +264,10 @@ export function RecipeForm({
 
           <div>
             <Label>Categoría (opcional)</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select
+              value={categoryId}
+              onValueChange={(val) => setCategoryId(val ?? '')}
+            >
               <SelectTrigger className="mt-1">
                 <SelectValue>
                   {categoryId
@@ -314,7 +322,7 @@ export function RecipeForm({
                     <Select
                       value={variant.size}
                       onValueChange={(val) =>
-                        updateVariant(variantIndex, 'size', val)
+                        val && updateVariant(variantIndex, 'size', val)
                       }
                     >
                       <SelectTrigger className="mt-1">
@@ -408,6 +416,7 @@ export function RecipeForm({
                       <Select
                         value={item.ingredientId}
                         onValueChange={(val) =>
+                          val &&
                           updateVariantItem(
                             variantIndex,
                             itemIndex,

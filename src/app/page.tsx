@@ -3,13 +3,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard'
 import { LowStockAlert } from '@/components/dashboard/LowStockAlert'
 import { RecentSales } from '@/components/dashboard/RecentSales'
 import { getDashboardStats } from '@/server/services/dashboard.service'
-import {
-  ShoppingCart,
-  DollarSign,
-  BookOpen,
-  AlertTriangle,
-  TrendingUp,
-} from 'lucide-react'
+import { ShoppingCart, DollarSign, BookOpen, AlertTriangle } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 export default async function DashboardPage() {

@@ -14,6 +14,7 @@ import {
   createIngredient,
   updateIngredient,
 } from '@/server/actions/ingredients'
+import { IngredientWithRelations } from '@/types/ingredient'
 
 const BASE_UNITS = ['ml', 'g', 'pieza', 'oz', 'l', 'kg']
 const PURCHASE_UNITS = [
@@ -32,21 +33,8 @@ interface Category {
   color: string | null
 }
 
-interface Ingredient {
-  id: string
-  name: string
-  baseUnit: string
-  purchaseUnit: string
-  conversionFactor: number
-  purchasePrice: number
-  currentStock: number
-  minimumStock: number
-  wastePercentage: number
-  category: Category | null
-}
-
 interface IngredientFormProps {
-  ingredient?: Ingredient | null
+  ingredient?: IngredientWithRelations | null
   categories: Category[]
   onSuccess: () => void
 }
@@ -59,7 +47,6 @@ export function IngredientForm({
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
 
-  // Selects controlados — React maneja su estado explícitamente
   const [baseUnit, setBaseUnit] = useState(ingredient?.baseUnit ?? '')
   const [purchaseUnit, setPurchaseUnit] = useState(
     ingredient?.purchaseUnit ?? ''
@@ -103,7 +90,6 @@ export function IngredientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Nombre */}
         <div className="sm:col-span-2">
           <Label htmlFor="name">Nombre del ingrediente</Label>
           <input
@@ -119,10 +105,12 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Unidad base */}
         <div>
           <Label>Unidad base (para recetas)</Label>
-          <Select value={baseUnit} onValueChange={setBaseUnit}>
+          <Select
+            value={baseUnit}
+            onValueChange={(val) => val && setBaseUnit(val)}
+          >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Selecciona unidad" />
             </SelectTrigger>
@@ -141,10 +129,12 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Unidad de compra */}
         <div>
           <Label>Unidad de compra</Label>
-          <Select value={purchaseUnit} onValueChange={setPurchaseUnit}>
+          <Select
+            value={purchaseUnit}
+            onValueChange={(val) => val && setPurchaseUnit(val)}
+          >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Selecciona unidad" />
             </SelectTrigger>
@@ -163,7 +153,6 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Factor de conversión */}
         <div>
           <Label htmlFor="conversionFactor">Factor de conversión</Label>
           <input
@@ -185,7 +174,6 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Precio de compra */}
         <div>
           <Label htmlFor="purchasePrice">Precio de compra ($MXN)</Label>
           <input
@@ -204,7 +192,6 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Stock actual */}
         <div>
           <Label htmlFor="currentStock">Stock actual</Label>
           <input
@@ -223,7 +210,6 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Stock mínimo */}
         <div>
           <Label htmlFor="minimumStock">Stock mínimo (alerta)</Label>
           <input
@@ -242,7 +228,6 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Merma */}
         <div>
           <Label htmlFor="wastePercentage">Merma estimada (%)</Label>
           <input
@@ -263,10 +248,12 @@ export function IngredientForm({
           )}
         </div>
 
-        {/* Categoría */}
         <div>
           <Label>Categoría (opcional)</Label>
-          <Select value={categoryId} onValueChange={setCategoryId}>
+          <Select
+            value={categoryId}
+            onValueChange={(val) => setCategoryId(val ?? '')}
+          >
             <SelectTrigger className="mt-1">
               <SelectValue>
                 {categoryId
@@ -286,7 +273,6 @@ export function IngredientForm({
         </div>
       </div>
 
-      {/* Botones */}
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" disabled={loading}>
           {loading

@@ -5,26 +5,16 @@ import { Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
-import { getStockStatus, calculateIngredientUnitCost } from '@/types/ingredient'
+import {
+  getStockStatus,
+  calculateIngredientUnitCost,
+  IngredientWithRelations,
+} from '@/types/ingredient'
 import { deleteIngredient } from '@/server/actions/ingredients'
 
-interface Ingredient {
-  id: string
-  name: string
-  baseUnit: string
-  purchaseUnit: string
-  conversionFactor: unknown
-  purchasePrice: unknown
-  currentStock: unknown
-  minimumStock: unknown
-  wastePercentage: unknown
-  category: { id: string; name: string; color: string | null } | null
-  supplier: { id: string; name: string } | null
-}
-
 interface IngredientTableProps {
-  ingredients: Ingredient[]
-  onEdit: (ingredient: Ingredient) => void
+  ingredients: IngredientWithRelations[]
+  onEdit: (ingredient: IngredientWithRelations) => void
 }
 
 export function IngredientTable({ ingredients, onEdit }: IngredientTableProps) {
@@ -73,17 +63,14 @@ export function IngredientTable({ ingredients, onEdit }: IngredientTableProps) {
         </thead>
         <tbody className="divide-border divide-y">
           {ingredients.map((ingredient) => {
-            const currentStock = Number(ingredient.currentStock)
-            const minimumStock = Number(ingredient.minimumStock)
-            const purchasePrice = Number(ingredient.purchasePrice)
-            const conversionFactor = Number(ingredient.conversionFactor)
-            const wastePercentage = Number(ingredient.wastePercentage)
-
-            const status = getStockStatus(currentStock, minimumStock)
+            const status = getStockStatus(
+              ingredient.currentStock,
+              ingredient.minimumStock
+            )
             const unitCost = calculateIngredientUnitCost(
-              purchasePrice,
-              conversionFactor,
-              wastePercentage
+              ingredient.purchasePrice,
+              ingredient.conversionFactor,
+              ingredient.wastePercentage
             )
 
             return (
@@ -106,9 +93,11 @@ export function IngredientTable({ ingredients, onEdit }: IngredientTableProps) {
                     <Badge
                       variant="secondary"
                       style={{
-                        backgroundColor: ingredient.category.color + '20',
-                        color: ingredient.category.color ?? undefined,
-                        borderColor: ingredient.category.color + '40',
+                        backgroundColor:
+                          (ingredient.category.color ?? '#888') + '20',
+                        color: ingredient.category.color ?? '#888',
+                        borderColor:
+                          (ingredient.category.color ?? '#888') + '40',
                       }}
                     >
                       {ingredient.category.name}
@@ -127,10 +116,10 @@ export function IngredientTable({ ingredients, onEdit }: IngredientTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <p className="text-foreground font-medium">
-                    {currentStock} {ingredient.purchaseUnit}
+                    {ingredient.currentStock} {ingredient.purchaseUnit}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    mín. {minimumStock} {ingredient.purchaseUnit}
+                    mín. {ingredient.minimumStock} {ingredient.purchaseUnit}
                   </p>
                 </td>
                 <td className="px-4 py-3">
