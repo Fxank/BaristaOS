@@ -434,7 +434,7 @@ export function RecipeForm({
                               : 'Selecciona ingrediente'}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="w-75">
                           {ingredients.map((ing) => (
                             <SelectItem key={ing.id} value={ing.id}>
                               {ing.name}
