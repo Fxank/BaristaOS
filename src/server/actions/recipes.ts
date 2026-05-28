@@ -193,7 +193,14 @@ export async function updateRecipe(id: string, rawData: unknown) {
       }
     }
 
-    await prisma.recipeVariant.deleteMany({ where: { recipeId: id } })
+    // En lugar de borrar las variantes existentes,
+    // creamos nuevas y marcamos las viejas como inactivas
+    await prisma.recipeVariant.deleteMany({
+      where: {
+        recipeId: id,
+        saleItems: { none: {} }, // solo borra variantes sin ventas asociadas
+      },
+    })
 
     const recipe = await prisma.recipe.update({
       where: { id },

@@ -236,7 +236,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                       )}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="w-[300px]">
+                  <SelectContent className="w-75">
                     {recipes.map((recipe) => (
                       <SelectItem key={recipe.id} value={recipe.id}>
                         <span>{recipe.name}</span>

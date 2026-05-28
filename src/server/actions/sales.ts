@@ -55,7 +55,7 @@ export async function getSales() {
 export async function getRecipesForSale() {
   try {
     const recipes = await prisma.recipe.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: { in: ['ACTIVE', 'SEASONAL'] } },
       include: {
         category: { select: { id: true, name: true, color: true } },
         variants: {
