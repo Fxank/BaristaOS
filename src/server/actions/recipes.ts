@@ -121,14 +121,16 @@ export async function createRecipe(rawData: unknown) {
     const data = validated.data
 
     const existing = await prisma.recipe.findFirst({
-      where: { name: data.name },
+      where: { name: data.name, categoryId: data.categoryId || null },
     })
 
     if (existing) {
       return {
         success: false,
-        error: 'Ya existe una receta con ese nombre',
-        fieldErrors: { name: ['Ya existe una receta con ese nombre'] },
+        error: 'Ya existe una receta con ese nombre en esta categoría',
+        fieldErrors: {
+          name: ['Ya existe una receta con ese nombre en esta categoría'],
+        },
       }
     }
 
@@ -184,8 +186,10 @@ export async function updateRecipe(id: string, rawData: unknown) {
     if (existing) {
       return {
         success: false,
-        error: 'Ya existe una receta con ese nombre',
-        fieldErrors: { name: ['Ya existe una receta con ese nombre'] },
+        error: 'Ya existe una receta con ese nombre en esta categoría',
+        fieldErrors: {
+          name: ['Ya existe una receta con ese nombre en esta categoría'],
+        },
       }
     }
 
