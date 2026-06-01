@@ -8,8 +8,16 @@ async function main() {
   // ============================================================
   // CATEGORÍAS
   // ============================================================
-  const categories = await Promise.all([
-    // Categorías de ingredientes
+  const [
+    lacteosCat,
+    cafesCat,
+    endulzantesCat,
+    saborizantesCat,
+    desechablesCat,
+    frappesCat,
+    cafesCalientesCat,
+    bebidasFriasCat,
+  ] = await Promise.all([
     prisma.category.upsert({
       where: { name_type: { name: 'Lácteos', type: 'INGREDIENT' } },
       update: {},
@@ -35,7 +43,6 @@ async function main() {
       update: {},
       create: { name: 'Desechables', type: 'INGREDIENT', color: '#6B7280' },
     }),
-    // Categorías de recetas
     prisma.category.upsert({
       where: { name_type: { name: 'Frappés', type: 'RECIPE' } },
       update: {},
@@ -53,16 +60,16 @@ async function main() {
     }),
   ])
 
-  console.log(`✅ ${categories.length} categorías creadas`)
+  console.log('✅ Categorías creadas')
 
   // ============================================================
   // PROVEEDOR
   // ============================================================
   const supplier = await prisma.supplier.upsert({
-    where: { id: 'supplier-001' },
+    where: { id: 'supplier-demo-001' },
     update: {},
     create: {
-      id: 'supplier-001',
+      id: 'supplier-demo-001',
       name: 'Distribuidora La Esperanza',
       contact: 'Carlos Méndez',
       phone: '555-123-4567',
@@ -75,19 +82,23 @@ async function main() {
   // ============================================================
   // INGREDIENTES
   // ============================================================
-  const lacteosCat = categories[0]
-  const cafesCat = categories[1]
-  const endulzantesCat = categories[2]
-  const saborizantesCat = categories[3]
-  const desechablesCat = categories[4]
-
-  const ingredients = await Promise.all([
-    // Lácteos
+  const [
+    ingLeche,
+    ingCrema,
+    ingCafeSoluble,
+    ingCafeEspresso,
+    ingAzucar,
+    ingJarabeVainilla,
+    ingJarabeMango,
+    ingChocolate,
+    ingVaso,
+    ingPopote,
+  ] = await Promise.all([
     prisma.ingredient.upsert({
-      where: { id: 'ing-leche' },
+      where: { id: 'ing-demo-leche' },
       update: {},
       create: {
-        id: 'ing-leche',
+        id: 'ing-demo-leche',
         name: 'Leche entera',
         baseUnit: 'ml',
         purchaseUnit: 'litro',
@@ -101,10 +112,10 @@ async function main() {
       },
     }),
     prisma.ingredient.upsert({
-      where: { id: 'ing-crema' },
+      where: { id: 'ing-demo-crema' },
       update: {},
       create: {
-        id: 'ing-crema',
+        id: 'ing-demo-crema',
         name: 'Crema para batir',
         baseUnit: 'ml',
         purchaseUnit: 'litro',
@@ -117,12 +128,11 @@ async function main() {
         supplierId: supplier.id,
       },
     }),
-    // Cafés
     prisma.ingredient.upsert({
-      where: { id: 'ing-cafe-soluble' },
+      where: { id: 'ing-demo-cafe-soluble' },
       update: {},
       create: {
-        id: 'ing-cafe-soluble',
+        id: 'ing-demo-cafe-soluble',
         name: 'Café soluble',
         baseUnit: 'g',
         purchaseUnit: 'kg',
@@ -136,10 +146,10 @@ async function main() {
       },
     }),
     prisma.ingredient.upsert({
-      where: { id: 'ing-cafe-espresso' },
+      where: { id: 'ing-demo-cafe-espresso' },
       update: {},
       create: {
-        id: 'ing-cafe-espresso',
+        id: 'ing-demo-cafe-espresso',
         name: 'Café espresso molido',
         baseUnit: 'g',
         purchaseUnit: 'kg',
@@ -152,12 +162,11 @@ async function main() {
         supplierId: supplier.id,
       },
     }),
-    // Endulzantes
     prisma.ingredient.upsert({
-      where: { id: 'ing-azucar' },
+      where: { id: 'ing-demo-azucar' },
       update: {},
       create: {
-        id: 'ing-azucar',
+        id: 'ing-demo-azucar',
         name: 'Azúcar estándar',
         baseUnit: 'g',
         purchaseUnit: 'kg',
@@ -170,10 +179,10 @@ async function main() {
       },
     }),
     prisma.ingredient.upsert({
-      where: { id: 'ing-jarabe-vainilla' },
+      where: { id: 'ing-demo-vainilla' },
       update: {},
       create: {
-        id: 'ing-jarabe-vainilla',
+        id: 'ing-demo-vainilla',
         name: 'Jarabe de vainilla',
         baseUnit: 'ml',
         purchaseUnit: 'litro',
@@ -182,15 +191,30 @@ async function main() {
         currentStock: 2,
         minimumStock: 0.5,
         wastePercentage: 1,
-        categoryId: endulzantesCat.id,
+        categoryId: saborizantesCat.id,
       },
     }),
-    // Saborizantes
     prisma.ingredient.upsert({
-      where: { id: 'ing-chocolate' },
+      where: { id: 'ing-demo-mango' },
       update: {},
       create: {
-        id: 'ing-chocolate',
+        id: 'ing-demo-mango',
+        name: 'Jarabe de mango',
+        baseUnit: 'ml',
+        purchaseUnit: 'litro',
+        conversionFactor: 1000,
+        purchasePrice: 165,
+        currentStock: 1.5,
+        minimumStock: 0.5,
+        wastePercentage: 1,
+        categoryId: saborizantesCat.id,
+      },
+    }),
+    prisma.ingredient.upsert({
+      where: { id: 'ing-demo-chocolate' },
+      update: {},
+      create: {
+        id: 'ing-demo-chocolate',
         name: 'Chocolate en polvo',
         baseUnit: 'g',
         purchaseUnit: 'kg',
@@ -203,27 +227,10 @@ async function main() {
       },
     }),
     prisma.ingredient.upsert({
-      where: { id: 'ing-caramelo' },
+      where: { id: 'ing-demo-vaso' },
       update: {},
       create: {
-        id: 'ing-caramelo',
-        name: 'Jarabe de caramelo',
-        baseUnit: 'ml',
-        purchaseUnit: 'litro',
-        conversionFactor: 1000,
-        purchasePrice: 165,
-        currentStock: 1.5,
-        minimumStock: 0.5,
-        wastePercentage: 1,
-        categoryId: saborizantesCat.id,
-      },
-    }),
-    // Desechables
-    prisma.ingredient.upsert({
-      where: { id: 'ing-vaso-frio' },
-      update: {},
-      create: {
-        id: 'ing-vaso-frio',
+        id: 'ing-demo-vaso',
         name: 'Vaso plástico 500ml',
         baseUnit: 'pieza',
         purchaseUnit: 'paquete',
@@ -236,26 +243,10 @@ async function main() {
       },
     }),
     prisma.ingredient.upsert({
-      where: { id: 'ing-tapa' },
+      where: { id: 'ing-demo-popote' },
       update: {},
       create: {
-        id: 'ing-tapa',
-        name: 'Tapa para vaso frío',
-        baseUnit: 'pieza',
-        purchaseUnit: 'paquete',
-        conversionFactor: 50,
-        purchasePrice: 45,
-        currentStock: 4,
-        minimumStock: 1,
-        wastePercentage: 0,
-        categoryId: desechablesCat.id,
-      },
-    }),
-    prisma.ingredient.upsert({
-      where: { id: 'ing-popote' },
-      update: {},
-      create: {
-        id: 'ing-popote',
+        id: 'ing-demo-popote',
         name: 'Popote',
         baseUnit: 'pieza',
         purchaseUnit: 'paquete',
@@ -269,35 +260,18 @@ async function main() {
     }),
   ])
 
-  console.log(`✅ ${ingredients.length} ingredientes creados`)
+  console.log('✅ Ingredientes creados')
 
   // ============================================================
   // RECETAS
   // ============================================================
 
-  const frappesCat = categories[5]
-  const cafesCalientesCat = categories[6]
-
-  const [
-    ingLeche,
-    ingCrema,
-    ingCafeSoluble,
-    ingCafeEspresso,
-    ingAzucar,
-    ingJarabeVainilla,
-    ingChocolate,
-    ingCaramelo,
-    ingVaso,
-    ingTapa,
-    ingPopote,
-  ] = ingredients
-
   // Frappé Moka
   const frappeMoka = await prisma.recipe.upsert({
-    where: { id: 'recipe-frappe-moka' },
+    where: { id: 'recipe-demo-frappe-moka' },
     update: {},
     create: {
-      id: 'recipe-frappe-moka',
+      id: 'recipe-demo-frappe-moka',
       name: 'Frappé Moka',
       description: 'Frappé cremoso de café con chocolate',
       prepTimeMinutes: 4,
@@ -307,12 +281,11 @@ async function main() {
   })
 
   await Promise.all([
-    // Variante Mediano
     prisma.recipeVariant.upsert({
-      where: { id: 'variant-frappe-moka-md' },
+      where: { id: 'variant-demo-moka-md' },
       update: {},
       create: {
-        id: 'variant-frappe-moka-md',
+        id: 'variant-demo-moka-md',
         recipeId: frappeMoka.id,
         size: 'Mediano',
         salePrice: 65,
@@ -323,18 +296,16 @@ async function main() {
             { ingredientId: ingAzucar.id, quantity: 20 },
             { ingredientId: ingChocolate.id, quantity: 20 },
             { ingredientId: ingVaso.id, quantity: 1 },
-            { ingredientId: ingTapa.id, quantity: 1 },
             { ingredientId: ingPopote.id, quantity: 1 },
           ],
         },
       },
     }),
-    // Variante Grande
     prisma.recipeVariant.upsert({
-      where: { id: 'variant-frappe-moka-lg' },
+      where: { id: 'variant-demo-moka-lg' },
       update: {},
       create: {
-        id: 'variant-frappe-moka-lg',
+        id: 'variant-demo-moka-lg',
         recipeId: frappeMoka.id,
         size: 'Grande',
         salePrice: 80,
@@ -345,7 +316,6 @@ async function main() {
             { ingredientId: ingAzucar.id, quantity: 25 },
             { ingredientId: ingChocolate.id, quantity: 25 },
             { ingredientId: ingVaso.id, quantity: 1 },
-            { ingredientId: ingTapa.id, quantity: 1 },
             { ingredientId: ingPopote.id, quantity: 1 },
           ],
         },
@@ -355,10 +325,10 @@ async function main() {
 
   // Frappé Vainilla
   const frappeVainilla = await prisma.recipe.upsert({
-    where: { id: 'recipe-frappe-vainilla' },
+    where: { id: 'recipe-demo-frappe-vainilla' },
     update: {},
     create: {
-      id: 'recipe-frappe-vainilla',
+      id: 'recipe-demo-frappe-vainilla',
       name: 'Frappé Vainilla',
       description: 'Frappé suave con jarabe de vainilla y crema',
       prepTimeMinutes: 4,
@@ -368,10 +338,10 @@ async function main() {
   })
 
   await prisma.recipeVariant.upsert({
-    where: { id: 'variant-frappe-vainilla-md' },
+    where: { id: 'variant-demo-vainilla-md' },
     update: {},
     create: {
-      id: 'variant-frappe-vainilla-md',
+      id: 'variant-demo-vainilla-md',
       recipeId: frappeVainilla.id,
       size: 'Mediano',
       salePrice: 65,
@@ -382,7 +352,6 @@ async function main() {
           { ingredientId: ingJarabeVainilla.id, quantity: 30 },
           { ingredientId: ingCrema.id, quantity: 50 },
           { ingredientId: ingVaso.id, quantity: 1 },
-          { ingredientId: ingTapa.id, quantity: 1 },
           { ingredientId: ingPopote.id, quantity: 1 },
         ],
       },
@@ -391,10 +360,10 @@ async function main() {
 
   // Café Americano
   const cafeAmericano = await prisma.recipe.upsert({
-    where: { id: 'recipe-americano' },
+    where: { id: 'recipe-demo-americano' },
     update: {},
     create: {
-      id: 'recipe-americano',
+      id: 'recipe-demo-americano',
       name: 'Café Americano',
       description: 'Espresso con agua caliente',
       prepTimeMinutes: 2,
@@ -404,10 +373,10 @@ async function main() {
   })
 
   await prisma.recipeVariant.upsert({
-    where: { id: 'variant-americano-unico' },
+    where: { id: 'variant-demo-americano' },
     update: {},
     create: {
-      id: 'variant-americano-unico',
+      id: 'variant-demo-americano',
       recipeId: cafeAmericano.id,
       size: 'Único',
       salePrice: 35,
@@ -417,40 +386,179 @@ async function main() {
     },
   })
 
-  // Café Caramelo
-  const cafeCaramelo = await prisma.recipe.upsert({
-    where: { id: 'recipe-cafe-caramelo' },
+  // Soda Italiana — con grupos de opciones
+  const sodaItaliana = await prisma.recipe.upsert({
+    where: { id: 'recipe-demo-soda' },
     update: {},
     create: {
-      id: 'recipe-cafe-caramelo',
-      name: 'Café Caramelo',
-      description: 'Espresso con leche vaporizada y jarabe de caramelo',
+      id: 'recipe-demo-soda',
+      name: 'Soda Italiana',
+      description: 'Bebida fría con jarabe y agua mineral',
       prepTimeMinutes: 3,
       status: 'ACTIVE',
-      categoryId: cafesCalientesCat.id,
+      categoryId: bebidasFriasCat.id,
     },
   })
 
   await prisma.recipeVariant.upsert({
-    where: { id: 'variant-cafe-caramelo-unico' },
+    where: { id: 'variant-demo-soda' },
     update: {},
     create: {
-      id: 'variant-cafe-caramelo-unico',
-      recipeId: cafeCaramelo.id,
+      id: 'variant-demo-soda',
+      recipeId: sodaItaliana.id,
       size: 'Único',
       salePrice: 55,
       items: {
         create: [
-          { ingredientId: ingCafeEspresso.id, quantity: 18 },
-          { ingredientId: ingLeche.id, quantity: 150 },
-          { ingredientId: ingCaramelo.id, quantity: 25 },
+          { ingredientId: ingVaso.id, quantity: 1 },
+          { ingredientId: ingPopote.id, quantity: 1 },
         ],
       },
     },
   })
 
-  console.log(`✅ Recetas creadas con sus variantes`)
-  console.log('🚀 BaristaOS database seeded successfully!')
+  // Grupo de opciones: Sabor
+  await prisma.recipeOptionGroup.upsert({
+    where: { id: 'group-demo-sabor' },
+    update: {},
+    create: {
+      id: 'group-demo-sabor',
+      recipeId: sodaItaliana.id,
+      name: 'Sabor',
+      required: true,
+      multiSelect: false,
+      sortOrder: 0,
+      options: {
+        create: [
+          {
+            name: 'Vainilla',
+            ingredientId: ingJarabeVainilla.id,
+            quantity: 30,
+            priceModifier: 0,
+            sortOrder: 0,
+            isDefault: true,
+          },
+          {
+            name: 'Mango',
+            ingredientId: ingJarabeMango.id,
+            quantity: 30,
+            priceModifier: 0,
+            sortOrder: 1,
+            isDefault: false,
+          },
+        ],
+      },
+    },
+  })
+
+  // Grupo de opciones: Extras
+  await prisma.recipeOptionGroup.upsert({
+    where: { id: 'group-demo-extras' },
+    update: {},
+    create: {
+      id: 'group-demo-extras',
+      recipeId: sodaItaliana.id,
+      name: 'Extras',
+      required: false,
+      multiSelect: true,
+      sortOrder: 1,
+      options: {
+        create: [
+          {
+            name: 'Crema batida',
+            ingredientId: ingCrema.id,
+            quantity: 30,
+            priceModifier: 5,
+            sortOrder: 0,
+            isDefault: false,
+          },
+        ],
+      },
+    },
+  })
+
+  console.log('✅ Recetas creadas con variantes y opciones')
+
+  // ============================================================
+  // VENTAS DE EJEMPLO
+  // ============================================================
+  const ventas = [
+    {
+      id: 'sale-demo-001',
+      folio: 'VTA-0001',
+      items: [
+        {
+          recipeId: frappeMoka.id,
+          variantId: 'variant-demo-moka-md',
+          quantity: 2,
+          unitPrice: 65,
+          unitCost: 8.5,
+        },
+      ],
+    },
+    {
+      id: 'sale-demo-002',
+      folio: 'VTA-0002',
+      items: [
+        {
+          recipeId: cafeAmericano.id,
+          variantId: 'variant-demo-americano',
+          quantity: 1,
+          unitPrice: 35,
+          unitCost: 5.04,
+        },
+        {
+          recipeId: frappeVainilla.id,
+          variantId: 'variant-demo-vainilla-md',
+          quantity: 1,
+          unitPrice: 65,
+          unitCost: 10.2,
+        },
+      ],
+    },
+    {
+      id: 'sale-demo-003',
+      folio: 'VTA-0003',
+      items: [
+        {
+          recipeId: frappeMoka.id,
+          variantId: 'variant-demo-moka-lg',
+          quantity: 1,
+          unitPrice: 80,
+          unitCost: 11.8,
+        },
+      ],
+    },
+  ]
+
+  for (const venta of ventas) {
+    await prisma.sale.upsert({
+      where: { id: venta.id },
+      update: {},
+      create: {
+        id: venta.id,
+        folio: venta.folio,
+        status: 'COMPLETED',
+        channel: 'IN_STORE',
+        discount: 0,
+        items: {
+          create: venta.items.map((item) => ({
+            recipeId: item.recipeId,
+            recipeVariantId: item.variantId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            unitCost: item.unitCost,
+          })),
+        },
+      },
+    })
+  }
+
+  console.log('✅ Ventas de ejemplo creadas')
+  console.log('🚀 BaristaOS demo database seeded successfully!')
+  console.log('')
+  console.log('📌 Para cargar datos reales del negocio:')
+  console.log('   pnpm db:seed:local')
 }
 
 main()

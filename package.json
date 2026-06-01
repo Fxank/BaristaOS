@@ -9,6 +9,8 @@
     "lint": "next lint",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
+    "db:seed:local": "tsx prisma/seed.local.ts",
+    "db:export": "tsx prisma/export-seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset"
   },
