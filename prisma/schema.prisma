@@ -120,6 +120,7 @@ model Ingredient {
   // Relaciones inversas
   recipeItems    RecipeItem[]
   stockMovements StockMovement[]
+  recipeOptions RecipeOption[]
 }
 
 // ------------------------------------------------------------
@@ -141,6 +142,7 @@ model Recipe {
 
   variants  RecipeVariant[]
   saleItems SaleItem[]
+  optionGroups RecipeOptionGroup[]
 }
 
 // ------------------------------------------------------------
@@ -181,6 +183,64 @@ model RecipeItem {
 }
 
 // ------------------------------------------------------------
+// RecipeOptionGroup - Grupos de opciones de una receta
+// Ejemplo: "Sabor", "Perla explosiva", "Extras"
+// ------------------------------------------------------------
+model RecipeOptionGroup {
+  id          String   @id @default(cuid())
+  name        String   // "Sabor", "Perla explosiva", "Extras"
+  required    Boolean  @default(true)  // si el cliente debe elegir obligatoriamente
+  multiSelect Boolean  @default(false) // si puede elegir más de una opción
+  sortOrder   Int      @default(0)     // orden de aparición en el POS
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  options RecipeOption[]
+}
+
+// ------------------------------------------------------------
+// RecipeOption - Opciones dentro de un grupo
+// Ejemplo: "Mango", "Fresa", "Crema batida"
+// ------------------------------------------------------------
+model RecipeOption {
+  id            String  @id @default(cuid())
+  name          String  // "Mango", "Fresa", "Crema batida"
+  priceModifier Decimal @default(0) // cuánto suma al precio base
+  quantity      Decimal @default(0) // cantidad del ingrediente a usar
+  isDefault     Boolean @default(false) // opción preseleccionada
+  isActive      Boolean @default(true)
+  sortOrder     Int     @default(0)
+
+  groupId String
+  group   RecipeOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  ingredientId String?
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
+
+  saleItemOptions SaleItemOption[]
+}
+
+// ------------------------------------------------------------
+// SaleItemOption - Opciones elegidas en cada item de venta
+// Guarda snapshot de qué eligió el cliente
+// ------------------------------------------------------------
+model SaleItemOption {
+  id            String  @id @default(cuid())
+  optionName    String  // snapshot del nombre al momento de vender
+  priceModifier Decimal // snapshot del precio al momento de vender
+  quantity      Decimal // snapshot de la cantidad al momento de vender
+
+  saleItemId String
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id])
+
+  optionId String
+  option   RecipeOption @relation(fields: [optionId], references: [id])
+}
+
+// ------------------------------------------------------------
 // Sale - Ventas registradas
 // ------------------------------------------------------------
 model Sale {
@@ -217,6 +277,7 @@ model SaleItem {
 
   recipeVariantId String
   recipeVariant   RecipeVariant @relation(fields: [recipeVariantId], references: [id])
+  options SaleItemOption[]
 }
 
 // ------------------------------------------------------------

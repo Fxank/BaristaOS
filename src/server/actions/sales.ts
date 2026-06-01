@@ -2,9 +2,35 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
-import { saleSchema } from '@/validations/sale.schema'
+import { z } from 'zod'
 
-// Genera el folio de venta: VTA-0001, VTA-0002, etc.
+const saleItemSchema = z.object({
+  recipeId: z.string().min(1, 'La receta es requerida'),
+  recipeVariantId: z.string().min(1, 'La variante es requerida'),
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0'),
+  unitPrice: z.number().positive('El precio debe ser mayor a 0'),
+  unitCost: z.number().min(0),
+  selectedOptions: z
+    .array(
+      z.object({
+        optionId: z.string(),
+        optionName: z.string(),
+        priceModifier: z.number(),
+        quantity: z.number(),
+      })
+    )
+    .default([]),
+})
+
+const saleSchema = z.object({
+  channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
+  notes: z.string().optional(),
+  discount: z.number().min(0).default(0),
+  items: z
+    .array(saleItemSchema)
+    .min(1, 'La venta debe tener al menos un producto'),
+})
+
 async function generateFolio(): Promise<string> {
   const lastSale = await prisma.sale.findFirst({
     orderBy: { createdAt: 'desc' },
@@ -78,6 +104,29 @@ export async function getRecipesForSale() {
             },
           },
         },
+        optionGroups: {
+          orderBy: { sortOrder: 'asc' as const },
+          include: {
+            options: {
+              where: { isActive: true },
+              orderBy: { sortOrder: 'asc' as const },
+              include: {
+                ingredient: {
+                  select: {
+                    id: true,
+                    name: true,
+                    purchasePrice: true,
+                    conversionFactor: true,
+                    wastePercentage: true,
+                    currentStock: true,
+                    baseUnit: true,
+                    purchaseUnit: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: { name: 'asc' },
     })
@@ -99,6 +148,23 @@ export async function getRecipesForSale() {
               wastePercentage: Number(item.ingredient.wastePercentage),
               currentStock: Number(item.ingredient.currentStock),
             },
+          })),
+        })),
+        optionGroups: recipe.optionGroups.map((group) => ({
+          ...group,
+          options: group.options.map((opt) => ({
+            ...opt,
+            priceModifier: Number(opt.priceModifier),
+            quantity: Number(opt.quantity),
+            ingredient: opt.ingredient
+              ? {
+                  ...opt.ingredient,
+                  purchasePrice: Number(opt.ingredient.purchasePrice),
+                  conversionFactor: Number(opt.ingredient.conversionFactor),
+                  wastePercentage: Number(opt.ingredient.wastePercentage),
+                  currentStock: Number(opt.ingredient.currentStock),
+                }
+              : null,
           })),
         })),
       })),
@@ -123,9 +189,6 @@ export async function createSale(rawData: unknown) {
     const data = validated.data
     const folio = await generateFolio()
 
-    // Creamos la venta y descontamos el inventario en una transacción
-    // Una transacción garantiza que si algo falla, nada se guarda
-    // Es decir: o todo funciona o nada cambia — nunca un estado intermedio
     const sale = await prisma.$transaction(async (tx) => {
       // 1. Crear la venta
       const newSale = await tx.sale.create({
@@ -142,19 +205,32 @@ export async function createSale(rawData: unknown) {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               unitCost: item.unitCost,
+              options: {
+                create: item.selectedOptions.map((so) => ({
+                  optionId: so.optionId,
+                  optionName: so.optionName,
+                  priceModifier: so.priceModifier,
+                  quantity: so.quantity,
+                })),
+              },
             })),
           },
         },
         include: {
           items: {
             include: {
+              options: {
+                include: {
+                  option: {
+                    include: { ingredient: true },
+                  },
+                },
+              },
               recipe: { select: { id: true, name: true } },
               recipeVariant: {
                 include: {
                   items: {
-                    include: {
-                      ingredient: true,
-                    },
+                    include: { ingredient: true },
                   },
                 },
               },
@@ -163,33 +239,50 @@ export async function createSale(rawData: unknown) {
         },
       })
 
-      // 2. Descontar ingredientes del inventario por cada item vendido
+      // 2. Descontar ingredientes base
       for (const saleItem of newSale.items) {
         for (const recipeItem of saleItem.recipeVariant.items) {
           const ingredient = recipeItem.ingredient
           const quantityUsed = Number(recipeItem.quantity) * saleItem.quantity
-
-          // Convertir de baseUnit a purchaseUnit para descontar el stock
           const stockToDeduct =
             quantityUsed / Number(ingredient.conversionFactor)
 
-          // Actualizar el stock del ingrediente
           await tx.ingredient.update({
             where: { id: ingredient.id },
-            data: {
-              currentStock: {
-                decrement: stockToDeduct,
-              },
-            },
+            data: { currentStock: { decrement: stockToDeduct } },
           })
 
-          // Registrar el movimiento en el historial
           await tx.stockMovement.create({
             data: {
               ingredientId: ingredient.id,
               type: 'SALE_USE',
               quantity: -stockToDeduct,
               reason: `Venta ${folio}`,
+            },
+          })
+        }
+
+        // 3. Descontar ingredientes de opciones seleccionadas
+        for (const saleItemOption of saleItem.options) {
+          const ingredient = saleItemOption.option.ingredient
+          if (!ingredient || Number(saleItemOption.quantity) === 0) continue
+
+          const quantityUsed =
+            Number(saleItemOption.quantity) * saleItem.quantity
+          const stockToDeduct =
+            quantityUsed / Number(ingredient.conversionFactor)
+
+          await tx.ingredient.update({
+            where: { id: ingredient.id },
+            data: { currentStock: { decrement: stockToDeduct } },
+          })
+
+          await tx.stockMovement.create({
+            data: {
+              ingredientId: ingredient.id,
+              type: 'SALE_USE',
+              quantity: -stockToDeduct,
+              reason: `Venta ${folio} — opción: ${saleItemOption.optionName}`,
             },
           })
         }

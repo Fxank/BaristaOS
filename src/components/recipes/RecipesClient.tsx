@@ -102,7 +102,12 @@ export function RecipesClient({
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((recipe) => (
-            <RecipeCard key={recipe.id} recipe={recipe} onEdit={handleEdit} />
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              ingredients={ingredients}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
       )}

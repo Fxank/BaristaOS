@@ -16,11 +16,35 @@ export type SaleWithItems = {
   }[]
 }
 
-export type RecipeForSale = {
+export type IngredientForSale = {
   id: string
   name: string
-  category: { id: string; name: string; color: string | null } | null
-  variants: RecipeVariantForSale[]
+  purchasePrice: number
+  conversionFactor: number
+  wastePercentage: number
+  currentStock: number
+  baseUnit: string
+  purchaseUnit: string
+}
+
+export type RecipeOptionForSale = {
+  id: string
+  name: string
+  priceModifier: number
+  quantity: number
+  isDefault: boolean
+  groupId: string
+  ingredientId: string | null
+  ingredient: IngredientForSale | null
+}
+
+export type RecipeOptionGroupForSale = {
+  id: string
+  name: string
+  required: boolean
+  multiSelect: boolean
+  sortOrder: number
+  options: RecipeOptionForSale[]
 }
 
 export type RecipeVariantForSale = {
@@ -31,17 +55,16 @@ export type RecipeVariantForSale = {
   items: {
     id: string
     quantity: number
-    ingredient: {
-      id: string
-      name: string
-      purchasePrice: number
-      conversionFactor: number
-      wastePercentage: number
-      currentStock: number
-      baseUnit: string
-      purchaseUnit: string
-    }
+    ingredient: IngredientForSale
   }[]
+}
+
+export type RecipeForSale = {
+  id: string
+  name: string
+  category: { id: string; name: string; color: string | null } | null
+  variants: RecipeVariantForSale[]
+  optionGroups: RecipeOptionGroupForSale[]
 }
 
 export const CHANNEL_LABELS = {
@@ -60,6 +83,17 @@ export function calculateVariantCostForSale(
       unitCost * (1 + item.ingredient.wastePercentage / 100)
     return total + unitCostWithWaste * item.quantity
   }, 0)
+}
+
+export function calculateOptionCostForSale(
+  option: RecipeOptionForSale
+): number {
+  if (!option.ingredient || option.quantity === 0) return 0
+  const unitCost =
+    option.ingredient.purchasePrice / option.ingredient.conversionFactor
+  const unitCostWithWaste =
+    unitCost * (1 + option.ingredient.wastePercentage / 100)
+  return unitCostWithWaste * option.quantity
 }
 
 export function calculateSaleTotal(sale: SaleWithItems): number {

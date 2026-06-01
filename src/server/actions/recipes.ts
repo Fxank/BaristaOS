@@ -25,6 +25,27 @@ const recipeInclude = {
       },
     },
   },
+  optionGroups: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: {
+      options: {
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' as const },
+        include: {
+          ingredient: {
+            select: {
+              id: true,
+              name: true,
+              baseUnit: true,
+              purchasePrice: true,
+              conversionFactor: true,
+              wastePercentage: true,
+            },
+          },
+        },
+      },
+    },
+  },
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,6 +70,24 @@ function serializeRecipe(recipe: any) {
         })),
       })
     ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    optionGroups: recipe.optionGroups.map((group: any) => ({
+      ...group,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: group.options.map((opt: any) => ({
+        ...opt,
+        priceModifier: Number(opt.priceModifier),
+        quantity: Number(opt.quantity),
+        ingredient: opt.ingredient
+          ? {
+              ...opt.ingredient,
+              purchasePrice: Number(opt.ingredient.purchasePrice),
+              conversionFactor: Number(opt.ingredient.conversionFactor),
+              wastePercentage: Number(opt.ingredient.wastePercentage),
+            }
+          : null,
+      })),
+    })),
   }
 }
 
@@ -180,7 +219,11 @@ export async function updateRecipe(id: string, rawData: unknown) {
     const data = validated.data
 
     const existing = await prisma.recipe.findFirst({
-      where: { name: data.name, NOT: { id } },
+      where: {
+        name: data.name,
+        categoryId: data.categoryId || null,
+        NOT: { id },
+      },
     })
 
     if (existing) {

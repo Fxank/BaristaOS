@@ -21,9 +21,18 @@ import { formatCurrency } from '@/lib/utils'
 import {
   RecipeForSale,
   RecipeVariantForSale,
+  RecipeOptionGroupForSale,
+  RecipeOptionForSale,
   calculateVariantCostForSale,
+  calculateOptionCostForSale,
 } from '@/types/sale'
 import { createSale } from '@/server/actions/sales'
+
+interface SelectedOption {
+  groupId: string
+  groupName: string
+  option: RecipeOptionForSale
+}
 
 interface CartItem {
   recipeId: string
@@ -34,6 +43,7 @@ interface CartItem {
   quantity: number
   unitPrice: number
   unitCost: number
+  selectedOptions: SelectedOption[]
 }
 
 interface NewSaleModalProps {
@@ -60,6 +70,9 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
   const [selectedRecipeId, setSelectedRecipeId] = useState('')
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const [selectedQuantity, setSelectedQuantity] = useState('1')
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<string, string>
+  >({})
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId)
   const selectedVariant = selectedRecipe?.variants.find(
@@ -68,18 +81,132 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
 
   function handleRecipeChange(recipeId: string) {
     setSelectedRecipeId(recipeId)
-    // Limpiamos el variant para forzar nueva selección
     setSelectedVariantId('')
+    setSelectedOptions({})
+  }
+
+  function handleVariantChange(variantId: string) {
+    setSelectedVariantId(variantId)
+    // Pre-seleccionar opciones default
+    const defaults: Record<string, string> = {}
+    selectedRecipe?.optionGroups.forEach((group) => {
+      const defaultOption = group.options.find((opt) => opt.isDefault)
+      if (defaultOption) {
+        defaults[group.id] = defaultOption.id
+      }
+    })
+    setSelectedOptions(defaults)
+  }
+
+  function handleOptionChange(groupId: string, optionId: string) {
+    setSelectedOptions((prev) => {
+      // Si ya está seleccionada, deseleccionar (toggle)
+      if (prev[groupId] === optionId) {
+        return { ...prev, [groupId]: '' }
+      }
+      return { ...prev, [groupId]: optionId }
+    })
+  }
+
+  function handleMultiOptionToggle(groupId: string, optionId: string) {
+    setSelectedOptions((prev) => {
+      const current = prev[groupId] ?? ''
+      const ids = current ? current.split(',') : []
+      const exists = ids.includes(optionId)
+      const updated = exists
+        ? ids.filter((id) => id !== optionId)
+        : [...ids, optionId]
+      return { ...prev, [groupId]: updated.join(',') }
+    })
+  }
+
+  // Calcula el costo total incluyendo opciones seleccionadas
+  function calculateTotalCost(
+    variant: RecipeVariantForSale,
+    groups: RecipeOptionGroupForSale[],
+    options: Record<string, string>
+  ): number {
+    const baseCost = calculateVariantCostForSale(variant)
+    const optionsCost = groups.reduce((total, group) => {
+      const selectedIds = (options[group.id] ?? '').split(',').filter(Boolean)
+      return (
+        total +
+        selectedIds.reduce((sum, optId) => {
+          const opt = group.options.find((o) => o.id === optId)
+          return sum + (opt ? calculateOptionCostForSale(opt) : 0)
+        }, 0)
+      )
+    }, 0)
+    return baseCost + optionsCost
+  }
+
+  // Calcula el precio adicional de las opciones seleccionadas
+  function calculateOptionsPrice(
+    groups: RecipeOptionGroupForSale[],
+    options: Record<string, string>
+  ): number {
+    return groups.reduce((total, group) => {
+      const selectedIds = (options[group.id] ?? '').split(',').filter(Boolean)
+      return (
+        total +
+        selectedIds.reduce((sum, optId) => {
+          const opt = group.options.find((o) => o.id === optId)
+          return sum + (opt ? opt.priceModifier : 0)
+        }, 0)
+      )
+    }, 0)
+  }
+
+  // Verifica si todas las opciones requeridas están seleccionadas
+  function areRequiredOptionsFilled(): boolean {
+    if (!selectedRecipe) return true
+    return selectedRecipe.optionGroups
+      .filter((g) => g.required)
+      .every((g) => {
+        const selected = selectedOptions[g.id]
+        return selected && selected.length > 0
+      })
   }
 
   function addToCart() {
     if (!selectedRecipe || !selectedVariant) return
+    if (!areRequiredOptionsFilled()) return
 
-    const unitCost = calculateVariantCostForSale(selectedVariant)
+    const optionsPrice = calculateOptionsPrice(
+      selectedRecipe.optionGroups,
+      selectedOptions
+    )
+    const totalCost = calculateTotalCost(
+      selectedVariant,
+      selectedRecipe.optionGroups,
+      selectedOptions
+    )
+    const unitPrice = selectedVariant.salePrice + optionsPrice
     const quantity = parseInt(selectedQuantity) || 1
 
+    // Construir lista de opciones seleccionadas
+    const chosenOptions: SelectedOption[] = []
+    selectedRecipe.optionGroups.forEach((group) => {
+      const selectedIds = (selectedOptions[group.id] ?? '')
+        .split(',')
+        .filter(Boolean)
+      selectedIds.forEach((optId) => {
+        const opt = group.options.find((o) => o.id === optId)
+        if (opt) {
+          chosenOptions.push({
+            groupId: group.id,
+            groupName: group.name,
+            option: opt,
+          })
+        }
+      })
+    })
+
     const existingIndex = cart.findIndex(
-      (item) => item.recipeVariantId === selectedVariantId
+      (item) =>
+        item.recipeVariantId === selectedVariantId &&
+        JSON.stringify(item.selectedOptions.map((o) => o.option.id).sort()) ===
+          JSON.stringify(chosenOptions.map((o) => o.option.id).sort())
     )
 
     if (existingIndex >= 0) {
@@ -100,8 +227,9 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
           recipeVariantId: selectedVariant.id,
           variantSize: selectedVariant.size,
           quantity,
-          unitPrice: selectedVariant.salePrice,
-          unitCost,
+          unitPrice,
+          unitCost: totalCost,
+          selectedOptions: chosenOptions,
         },
       ])
     }
@@ -109,6 +237,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     setSelectedRecipeId('')
     setSelectedVariantId('')
     setSelectedQuantity('1')
+    setSelectedOptions({})
   }
 
   function removeFromCart(index: number) {
@@ -151,6 +280,12 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         unitCost: item.unitCost,
+        selectedOptions: item.selectedOptions.map((so) => ({
+          optionId: so.option.id,
+          optionName: so.option.name,
+          priceModifier: so.option.priceModifier,
+          quantity: so.option.quantity,
+        })),
       })),
     })
 
@@ -179,6 +314,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     setSelectedRecipeId('')
     setSelectedVariantId('')
     setSelectedQuantity('1')
+    setSelectedOptions({})
     setChannel('IN_STORE')
     setDiscount('')
     setNotes('')
@@ -187,9 +323,18 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     onClose()
   }
 
+  // Preview del precio con opciones seleccionadas
+  const previewOptionsPrice =
+    selectedVariant && selectedRecipe
+      ? calculateOptionsPrice(selectedRecipe.optionGroups, selectedOptions)
+      : 0
+  const previewPrice = selectedVariant
+    ? selectedVariant.salePrice + previewOptionsPrice
+    : 0
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] w-[95vw]! max-w-4xl! overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-[95vw]! max-w-2xl! overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
@@ -242,7 +387,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                         <span>{recipe.name}</span>
                         {recipe.category && (
                           <span className="text-muted-foreground ml-2 text-xs">
-                            {recipe.category.name}
+                            · {recipe.category.name}
                           </span>
                         )}
                       </SelectItem>
@@ -251,13 +396,13 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                 </Select>
               </div>
 
-              {/* Variante — key fuerza re-render cuando cambia la receta */}
+              {/* Variante */}
               <div>
                 <Label>Tamaño</Label>
                 <Select
                   key={selectedRecipeId}
                   value={selectedVariantId}
-                  onValueChange={(val) => val && setSelectedVariantId(val)}
+                  onValueChange={(val) => val && handleVariantChange(val)}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue>
@@ -292,7 +437,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                   <Button
                     type="button"
                     onClick={addToCart}
-                    disabled={!selectedVariantId}
+                    disabled={!selectedVariantId || !areRequiredOptionsFilled()}
                     size="sm"
                     className="shrink-0"
                   >
@@ -301,6 +446,80 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                 </div>
               </div>
             </div>
+
+            {/* Grupos de opciones */}
+            {selectedVariantId &&
+              selectedRecipe &&
+              selectedRecipe.optionGroups.length > 0 && (
+                <div className="border-border space-y-3 rounded-xl border p-4">
+                  <p className="text-foreground text-sm font-medium">
+                    Personalización
+                  </p>
+                  {selectedRecipe.optionGroups.map((group) => (
+                    <div key={group.id}>
+                      <p className="text-foreground mb-2 text-sm font-medium">
+                        {group.name}
+                        {group.required && (
+                          <span className="text-destructive ml-1 text-xs">
+                            *
+                          </span>
+                        )}
+                        {group.multiSelect && (
+                          <span className="text-muted-foreground ml-1 text-xs">
+                            (puedes elegir varios)
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {group.options.map((opt) => {
+                          const selectedIds = (selectedOptions[group.id] ?? '')
+                            .split(',')
+                            .filter(Boolean)
+                          const isSelected = selectedIds.includes(opt.id)
+
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                if (group.multiSelect) {
+                                  handleMultiOptionToggle(group.id, opt.id)
+                                } else {
+                                  handleOptionChange(group.id, opt.id)
+                                }
+                              }}
+                              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-background text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              {opt.name}
+                              {opt.priceModifier > 0 && (
+                                <span className="ml-1 text-xs opacity-80">
+                                  +{formatCurrency(opt.priceModifier)}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Preview precio con opciones */}
+                  {previewOptionsPrice > 0 && (
+                    <div className="bg-muted/50 mt-2 rounded-lg px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">
+                        Precio con opciones:{' '}
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {formatCurrency(previewPrice)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
 
           {/* Carrito */}
@@ -329,12 +548,16 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                           ({item.variantSize})
                         </span>
                       </p>
+                      {item.selectedOptions.length > 0 && (
+                        <p className="text-muted-foreground text-xs">
+                          {item.selectedOptions
+                            .map((so) => so.option.name)
+                            .join(', ')}
+                        </p>
+                      )}
                       <p className="text-muted-foreground text-xs">
                         {formatCurrency(item.unitPrice)} c/u · Costo:{' '}
                         {formatCurrency(item.unitCost)}
-                        {item.recipeCategory && (
-                          <span> · {item.recipeCategory}</span>
-                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -378,7 +601,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
             )}
           </div>
 
-          {/* Opciones */}
+          {/* Opciones de venta */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label>Canal de venta</Label>
