@@ -16,7 +16,6 @@ const saleItemSchema = z.object({
         optionId: z.string(),
         optionName: z.string(),
         priceModifier: z.number(),
-        quantity: z.number(),
       })
     )
     .default([]),
@@ -111,16 +110,20 @@ export async function getRecipesForSale() {
               where: { isActive: true },
               orderBy: { sortOrder: 'asc' as const },
               include: {
-                ingredient: {
-                  select: {
-                    id: true,
-                    name: true,
-                    purchasePrice: true,
-                    conversionFactor: true,
-                    wastePercentage: true,
-                    currentStock: true,
-                    baseUnit: true,
-                    purchaseUnit: true,
+                ingredients: {
+                  include: {
+                    ingredient: {
+                      select: {
+                        id: true,
+                        name: true,
+                        purchasePrice: true,
+                        conversionFactor: true,
+                        wastePercentage: true,
+                        currentStock: true,
+                        baseUnit: true,
+                        purchaseUnit: true,
+                      },
+                    },
                   },
                 },
               },
@@ -155,16 +158,17 @@ export async function getRecipesForSale() {
           options: group.options.map((opt) => ({
             ...opt,
             priceModifier: Number(opt.priceModifier),
-            quantity: Number(opt.quantity),
-            ingredient: opt.ingredient
-              ? {
-                  ...opt.ingredient,
-                  purchasePrice: Number(opt.ingredient.purchasePrice),
-                  conversionFactor: Number(opt.ingredient.conversionFactor),
-                  wastePercentage: Number(opt.ingredient.wastePercentage),
-                  currentStock: Number(opt.ingredient.currentStock),
-                }
-              : null,
+            ingredients: opt.ingredients.map((item) => ({
+              ...item,
+              quantity: Number(item.quantity),
+              ingredient: {
+                ...item.ingredient,
+                purchasePrice: Number(item.ingredient.purchasePrice),
+                conversionFactor: Number(item.ingredient.conversionFactor),
+                wastePercentage: Number(item.ingredient.wastePercentage),
+                currentStock: Number(item.ingredient.currentStock),
+              },
+            })),
           })),
         })),
       })),
@@ -210,7 +214,6 @@ export async function createSale(rawData: unknown) {
                   optionId: so.optionId,
                   optionName: so.optionName,
                   priceModifier: so.priceModifier,
-                  quantity: so.quantity,
                 })),
               },
             })),
@@ -219,14 +222,7 @@ export async function createSale(rawData: unknown) {
         include: {
           items: {
             include: {
-              options: {
-                include: {
-                  option: {
-                    include: { ingredient: true },
-                  },
-                },
-              },
-              recipe: { select: { id: true, name: true } },
+              options: true,
               recipeVariant: {
                 include: {
                   items: {
@@ -264,27 +260,38 @@ export async function createSale(rawData: unknown) {
 
         // 3. Descontar ingredientes de opciones seleccionadas
         for (const saleItemOption of saleItem.options) {
-          const ingredient = saleItemOption.option.ingredient
-          if (!ingredient || Number(saleItemOption.quantity) === 0) continue
-
-          const quantityUsed =
-            Number(saleItemOption.quantity) * saleItem.quantity
-          const stockToDeduct =
-            quantityUsed / Number(ingredient.conversionFactor)
-
-          await tx.ingredient.update({
-            where: { id: ingredient.id },
-            data: { currentStock: { decrement: stockToDeduct } },
-          })
-
-          await tx.stockMovement.create({
-            data: {
-              ingredientId: ingredient.id,
-              type: 'SALE_USE',
-              quantity: -stockToDeduct,
-              reason: `Venta ${folio} — opción: ${saleItemOption.optionName}`,
+          const dbOption = await tx.recipeOption.findUnique({
+            where: { id: saleItemOption.optionId },
+            include: {
+              ingredients: {
+                include: { ingredient: true },
+              },
             },
           })
+
+          if (!dbOption) continue
+
+          for (const optIngredient of dbOption.ingredients) {
+            const ingredient = optIngredient.ingredient
+            const quantityUsed =
+              Number(optIngredient.quantity) * saleItem.quantity
+            const stockToDeduct =
+              quantityUsed / Number(ingredient.conversionFactor)
+
+            await tx.ingredient.update({
+              where: { id: ingredient.id },
+              data: { currentStock: { decrement: stockToDeduct } },
+            })
+
+            await tx.stockMovement.create({
+              data: {
+                ingredientId: ingredient.id,
+                type: 'SALE_USE',
+                quantity: -stockToDeduct,
+                reason: `Venta ${folio} — opción: ${saleItemOption.optionName}`,
+              },
+            })
+          }
         }
       }
 

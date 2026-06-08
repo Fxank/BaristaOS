@@ -34,12 +34,16 @@ interface OptionGroupsManagerProps {
   ingredients: Ingredient[]
 }
 
+interface OptionIngredientForm {
+  ingredientId: string
+  quantity: string
+}
+
 interface OptionForm {
   name: string
   priceModifier: string
-  quantity: string
-  ingredientId: string
   isDefault: boolean
+  ingredients: OptionIngredientForm[]
 }
 
 interface GroupForm {
@@ -49,12 +53,16 @@ interface GroupForm {
   options: OptionForm[]
 }
 
+const emptyOptionIngredient = (): OptionIngredientForm => ({
+  ingredientId: '',
+  quantity: '',
+})
+
 const emptyOption = (): OptionForm => ({
   name: '',
   priceModifier: '0',
-  quantity: '0',
-  ingredientId: '',
   isDefault: false,
+  ingredients: [emptyOptionIngredient()],
 })
 
 const emptyGroup = (): GroupForm => ({
@@ -92,9 +100,14 @@ export function OptionGroupsManager({
       options: group.options.map((opt) => ({
         name: opt.name,
         priceModifier: opt.priceModifier.toString(),
-        quantity: opt.quantity.toString(),
-        ingredientId: opt.ingredientId ?? '',
         isDefault: opt.isDefault,
+        ingredients:
+          opt.ingredients.length > 0
+            ? opt.ingredients.map((ing) => ({
+                ingredientId: ing.ingredientId,
+                quantity: ing.quantity.toString(),
+              }))
+            : [emptyOptionIngredient()],
       })),
     })
     setShowForm(true)
@@ -113,7 +126,7 @@ export function OptionGroupsManager({
 
   function updateOption(
     index: number,
-    field: keyof OptionForm,
+    field: keyof Omit<OptionForm, 'ingredients'>,
     value: string | boolean
   ) {
     setForm({
@@ -124,13 +137,69 @@ export function OptionGroupsManager({
     })
   }
 
+  function addIngredientToOption(optionIndex: number) {
+    setForm({
+      ...form,
+      options: form.options.map((opt, i) =>
+        i === optionIndex
+          ? {
+              ...opt,
+              ingredients: [...opt.ingredients, emptyOptionIngredient()],
+            }
+          : opt
+      ),
+    })
+  }
+
+  function removeIngredientFromOption(
+    optionIndex: number,
+    ingredientIndex: number
+  ) {
+    setForm({
+      ...form,
+      options: form.options.map((opt, i) =>
+        i === optionIndex
+          ? {
+              ...opt,
+              ingredients: opt.ingredients.filter(
+                (_, j) => j !== ingredientIndex
+              ),
+            }
+          : opt
+      ),
+    })
+  }
+
+  function updateOptionIngredient(
+    optionIndex: number,
+    ingredientIndex: number,
+    field: keyof OptionIngredientForm,
+    value: string
+  ) {
+    setForm({
+      ...form,
+      options: form.options.map((opt, i) =>
+        i === optionIndex
+          ? {
+              ...opt,
+              ingredients: opt.ingredients.map((ing, j) =>
+                j === ingredientIndex ? { ...ing, [field]: value } : ing
+              ),
+            }
+          : opt
+      ),
+    })
+  }
+
   function getOptionCostPreview(opt: OptionForm): number {
-    if (!opt.ingredientId || !opt.quantity) return 0
-    const ing = ingredients.find((i) => i.id === opt.ingredientId)
-    if (!ing) return 0
-    const unitCost = ing.purchasePrice / ing.conversionFactor
-    const costWithWaste = unitCost * (1 + ing.wastePercentage / 100)
-    return costWithWaste * Number(opt.quantity)
+    return opt.ingredients.reduce((total, ing) => {
+      if (!ing.ingredientId || !ing.quantity) return total
+      const ingredient = ingredients.find((i) => i.id === ing.ingredientId)
+      if (!ingredient) return total
+      const unitCost = ingredient.purchasePrice / ingredient.conversionFactor
+      const costWithWaste = unitCost * (1 + ingredient.wastePercentage / 100)
+      return total + costWithWaste * Number(ing.quantity)
+    }, 0)
   }
 
   async function handleSubmit() {
@@ -144,10 +213,14 @@ export function OptionGroupsManager({
       options: form.options.map((opt, i) => ({
         name: opt.name,
         priceModifier: Number(opt.priceModifier) || 0,
-        quantity: Number(opt.quantity) || 0,
-        ingredientId: opt.ingredientId || undefined,
         isDefault: opt.isDefault,
         sortOrder: i,
+        ingredients: opt.ingredients
+          .filter((ing) => ing.ingredientId && ing.quantity)
+          .map((ing) => ({
+            ingredientId: ing.ingredientId,
+            quantity: Number(ing.quantity),
+          })),
       })),
     }
 
@@ -192,7 +265,6 @@ export function OptionGroupsManager({
         )}
       </div>
 
-      {/* Lista de grupos existentes */}
       {optionGroups.length === 0 && !showForm && (
         <div className="border-border rounded-lg border border-dashed p-6 text-center">
           <p className="text-muted-foreground text-sm">
@@ -252,45 +324,66 @@ export function OptionGroupsManager({
 
           {expandedGroups.includes(group.id) && (
             <div className="divide-border divide-y px-4 py-2">
-              {group.options.map((opt) => (
-                <div
-                  key={opt.id}
-                  className="flex items-center justify-between py-2 text-sm"
-                >
-                  <span className="text-foreground">{opt.name}</span>
-                  <div className="text-muted-foreground flex items-center gap-4">
-                    {opt.ingredient && (
-                      <span>
-                        {opt.quantity} {opt.ingredient.baseUnit} de{' '}
-                        {opt.ingredient.name}
+              {group.options.map((opt) => {
+                const cost = opt.ingredients.reduce((total, item) => {
+                  const { purchasePrice, conversionFactor, wastePercentage } =
+                    item.ingredient
+                  const unitCost = purchasePrice / conversionFactor
+                  const costWithWaste = unitCost * (1 + wastePercentage / 100)
+                  return total + costWithWaste * item.quantity
+                }, 0)
+
+                return (
+                  <div key={opt.id} className="py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-foreground font-medium">
+                        {opt.name}
                       </span>
-                    )}
-                    {opt.priceModifier > 0 && (
-                      <span className="font-medium text-emerald-600">
-                        +{formatCurrency(opt.priceModifier)}
-                      </span>
-                    )}
-                    {opt.isDefault && (
-                      <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs">
-                        Default
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {cost > 0 && (
+                          <span className="text-muted-foreground text-xs">
+                            Costo: {formatCurrency(cost)}
+                          </span>
+                        )}
+                        {opt.priceModifier > 0 && (
+                          <span className="text-xs font-medium text-emerald-600">
+                            +{formatCurrency(opt.priceModifier)}
+                          </span>
+                        )}
+                        {opt.isDefault && (
+                          <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {opt.ingredients.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {opt.ingredients.map((ing) => (
+                          <p
+                            key={ing.id}
+                            className="text-muted-foreground text-xs"
+                          >
+                            · {ing.quantity} {ing.ingredient.baseUnit} de{' '}
+                            {ing.ingredient.name}
+                          </p>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       ))}
 
-      {/* Formulario de grupo */}
       {showForm && (
         <div className="border-border space-y-4 rounded-xl border p-4">
           <h4 className="text-foreground font-medium">
             {editingGroupId ? 'Editar grupo' : 'Nuevo grupo de opciones'}
           </h4>
 
-          {/* Nombre y configuración del grupo */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <Label>Nombre del grupo</Label>
@@ -328,8 +421,7 @@ export function OptionGroupsManager({
             </div>
           </div>
 
-          {/* Opciones */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label>Opciones</Label>
               <Button
@@ -343,74 +435,25 @@ export function OptionGroupsManager({
               </Button>
             </div>
 
-            {form.options.map((opt, index) => {
+            {form.options.map((opt, optionIndex) => {
               const costPreview = getOptionCostPreview(opt)
-              const selectedIng = ingredients.find(
-                (i) => i.id === opt.ingredientId
-              )
 
               return (
                 <div
-                  key={index}
-                  className="bg-muted/30 space-y-3 rounded-lg p-3"
+                  key={optionIndex}
+                  className="bg-muted/30 space-y-3 rounded-lg p-4"
                 >
-                  {/* Fila 1: Nombre e Ingrediente */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
+                  {/* Fila 1: Nombre, Precio adicional, Default, Eliminar */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                    <div className="sm:col-span-2">
                       <Label>Nombre de la opción</Label>
                       <input
                         type="text"
                         value={opt.name}
                         onChange={(e) =>
-                          updateOption(index, 'name', e.target.value)
+                          updateOption(optionIndex, 'name', e.target.value)
                         }
-                        placeholder="Ej: Mango, Fresa, Crema batida"
-                        className="border-input bg-background focus:ring-ring mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
-                      />
-                    </div>
-                    <div>
-                      <Label>Ingrediente asociado</Label>
-                      <Select
-                        value={opt.ingredientId}
-                        onValueChange={(val) =>
-                          updateOption(index, 'ingredientId', val ?? '')
-                        }
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue>
-                            {opt.ingredientId
-                              ? (ingredients.find(
-                                  (i) => i.id === opt.ingredientId
-                                )?.name ?? 'Ninguno')
-                              : 'Ninguno (sin descuento)'}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="w-75">
-                          {ingredients.map((ing) => (
-                            <SelectItem key={ing.id} value={ing.id}>
-                              {ing.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Fila 2: Cantidad, Precio adicional y Eliminar */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div>
-                      <Label>
-                        Cantidad{' '}
-                        {selectedIng ? `(${selectedIng.baseUnit})` : ''}
-                      </Label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={opt.quantity}
-                        onChange={(e) =>
-                          updateOption(index, 'quantity', e.target.value)
-                        }
+                        placeholder="Ej: Mango, Fresa, Chocolate"
                         className="border-input bg-background focus:ring-ring mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
                       />
                     </div>
@@ -422,37 +465,41 @@ export function OptionGroupsManager({
                         min="0"
                         value={opt.priceModifier}
                         onChange={(e) =>
-                          updateOption(index, 'priceModifier', e.target.value)
+                          updateOption(
+                            optionIndex,
+                            'priceModifier',
+                            e.target.value
+                          )
                         }
                         className="border-input bg-background focus:ring-ring mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
                       />
                     </div>
                     <div className="flex items-end gap-2">
                       <div className="flex-1">
-                        <Label>¿Por defecto?</Label>
+                        <Label>¿Default?</Label>
                         <div className="mt-2 flex items-center gap-2">
                           <input
                             type="checkbox"
-                            id={`default-${index}`}
                             checked={opt.isDefault}
                             onChange={(e) =>
-                              updateOption(index, 'isDefault', e.target.checked)
+                              updateOption(
+                                optionIndex,
+                                'isDefault',
+                                e.target.checked
+                              )
                             }
                             className="rounded"
                           />
-                          <label
-                            htmlFor={`default-${index}`}
-                            className="text-muted-foreground cursor-pointer text-sm"
-                          >
-                            Marcar default
-                          </label>
+                          <span className="text-muted-foreground text-sm">
+                            Sí
+                          </span>
                         </div>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeOption(index)}
+                        onClick={() => removeOption(optionIndex)}
                         disabled={form.options.length === 1}
                         className="text-destructive hover:text-destructive mb-0.5"
                       >
@@ -461,14 +508,114 @@ export function OptionGroupsManager({
                     </div>
                   </div>
 
+                  {/* Ingredientes de la opción */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">
+                        Ingredientes de esta opción
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addIngredientToOption(optionIndex)}
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        Ingrediente
+                      </Button>
+                    </div>
+
+                    {opt.ingredients.map((ing, ingIndex) => {
+                      const selectedIng = ingredients.find(
+                        (i) => i.id === ing.ingredientId
+                      )
+
+                      return (
+                        <div
+                          key={ingIndex}
+                          className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_32px]"
+                        >
+                          <Select
+                            value={ing.ingredientId}
+                            onValueChange={(val) =>
+                              updateOptionIngredient(
+                                optionIndex,
+                                ingIndex,
+                                'ingredientId',
+                                val ?? ''
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue>
+                                {ing.ingredientId
+                                  ? (ingredients.find(
+                                      (i) => i.id === ing.ingredientId
+                                    )?.name ?? 'Selecciona')
+                                  : 'Selecciona ingrediente'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="w-75">
+                              {ingredients.map((i) => (
+                                <SelectItem key={i.id} value={i.id}>
+                                  {i.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={ing.quantity}
+                            onChange={(e) =>
+                              updateOptionIngredient(
+                                optionIndex,
+                                ingIndex,
+                                'quantity',
+                                e.target.value
+                              )
+                            }
+                            placeholder={
+                              selectedIng ? selectedIng.baseUnit : 'Cantidad'
+                            }
+                            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+                          />
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              removeIngredientFromOption(optionIndex, ingIndex)
+                            }
+                            disabled={opt.ingredients.length === 1}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+
                   {/* Preview de costo */}
                   {costPreview > 0 && (
                     <p className="text-muted-foreground text-xs">
                       Costo de esta opción:{' '}
                       <span className="text-foreground font-medium">
                         {formatCurrency(costPreview)}
-                      </span>{' '}
-                      — el precio adicional es lo que cobras extra al cliente
+                      </span>
+                      {Number(opt.priceModifier) > 0 && (
+                        <span>
+                          {' '}
+                          · Precio adicional al cliente:{' '}
+                          <span className="font-medium text-emerald-600">
+                            +{formatCurrency(Number(opt.priceModifier))}
+                          </span>
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -476,7 +623,6 @@ export function OptionGroupsManager({
             })}
           </div>
 
-          {/* Botones */}
           <div className="flex justify-end gap-3 pt-2">
             <Button
               type="button"

@@ -4,13 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
+const optionIngredientSchema = z.object({
+  ingredientId: z.string().min(1, 'El ingrediente es requerido'),
+  quantity: z.number().positive('La cantidad debe ser mayor a 0'),
+})
+
 const optionSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
   priceModifier: z.number().min(0).default(0),
-  quantity: z.number().min(0).default(0),
-  ingredientId: z.string().optional(),
   isDefault: z.boolean().default(false),
   sortOrder: z.number().default(0),
+  ingredients: z.array(optionIngredientSchema).default([]),
 })
 
 const optionGroupSchema = z.object({
@@ -31,14 +35,18 @@ export async function getRecipeOptionGroups(recipeId: string) {
         options: {
           where: { isActive: true },
           include: {
-            ingredient: {
-              select: {
-                id: true,
-                name: true,
-                baseUnit: true,
-                purchasePrice: true,
-                conversionFactor: true,
-                wastePercentage: true,
+            ingredients: {
+              include: {
+                ingredient: {
+                  select: {
+                    id: true,
+                    name: true,
+                    baseUnit: true,
+                    purchasePrice: true,
+                    conversionFactor: true,
+                    wastePercentage: true,
+                  },
+                },
               },
             },
           },
@@ -55,15 +63,16 @@ export async function getRecipeOptionGroups(recipeId: string) {
         options: group.options.map((opt) => ({
           ...opt,
           priceModifier: Number(opt.priceModifier),
-          quantity: Number(opt.quantity),
-          ingredient: opt.ingredient
-            ? {
-                ...opt.ingredient,
-                purchasePrice: Number(opt.ingredient.purchasePrice),
-                conversionFactor: Number(opt.ingredient.conversionFactor),
-                wastePercentage: Number(opt.ingredient.wastePercentage),
-              }
-            : null,
+          ingredients: opt.ingredients.map((item) => ({
+            ...item,
+            quantity: Number(item.quantity),
+            ingredient: {
+              ...item.ingredient,
+              purchasePrice: Number(item.ingredient.purchasePrice),
+              conversionFactor: Number(item.ingredient.conversionFactor),
+              wastePercentage: Number(item.ingredient.wastePercentage),
+            },
+          })),
         })),
       })),
     }
@@ -100,10 +109,14 @@ export async function createOptionGroup(recipeId: string, rawData: unknown) {
           create: data.options.map((opt) => ({
             name: opt.name,
             priceModifier: opt.priceModifier,
-            quantity: opt.quantity,
-            ingredientId: opt.ingredientId || null,
             isDefault: opt.isDefault,
             sortOrder: opt.sortOrder,
+            ingredients: {
+              create: opt.ingredients.map((ing) => ({
+                ingredientId: ing.ingredientId,
+                quantity: ing.quantity,
+              })),
+            },
           })),
         },
       },
@@ -130,7 +143,6 @@ export async function updateOptionGroup(groupId: string, rawData: unknown) {
 
     const data = validated.data
 
-    // Eliminamos las opciones existentes y recreamos
     await prisma.recipeOption.deleteMany({ where: { groupId } })
 
     await prisma.recipeOptionGroup.update({
@@ -144,10 +156,14 @@ export async function updateOptionGroup(groupId: string, rawData: unknown) {
           create: data.options.map((opt) => ({
             name: opt.name,
             priceModifier: opt.priceModifier,
-            quantity: opt.quantity,
-            ingredientId: opt.ingredientId || null,
             isDefault: opt.isDefault,
             sortOrder: opt.sortOrder,
+            ingredients: {
+              create: opt.ingredients.map((ing) => ({
+                ingredientId: ing.ingredientId,
+                quantity: ing.quantity,
+              })),
+            },
           })),
         },
       },
@@ -171,6 +187,9 @@ export async function deleteOptionGroup(groupId: string) {
     return { success: true }
   } catch (error) {
     console.error('Error deleting option group:', error)
-    return { success: false, error: 'No se pudo eliminar el grupo de opciones' }
+    return {
+      success: false,
+      error: 'No se pudo eliminar el grupo de opciones',
+    }
   }
 }

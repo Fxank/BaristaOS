@@ -27,15 +27,20 @@ export type IngredientForSale = {
   purchaseUnit: string
 }
 
+export type RecipeOptionIngredientForSale = {
+  id: string
+  quantity: number
+  ingredientId: string
+  ingredient: IngredientForSale
+}
+
 export type RecipeOptionForSale = {
   id: string
   name: string
   priceModifier: number
-  quantity: number
   isDefault: boolean
   groupId: string
-  ingredientId: string | null
-  ingredient: IngredientForSale | null
+  ingredients: RecipeOptionIngredientForSale[]
 }
 
 export type RecipeOptionGroupForSale = {
@@ -88,12 +93,13 @@ export function calculateVariantCostForSale(
 export function calculateOptionCostForSale(
   option: RecipeOptionForSale
 ): number {
-  if (!option.ingredient || option.quantity === 0) return 0
-  const unitCost =
-    option.ingredient.purchasePrice / option.ingredient.conversionFactor
-  const unitCostWithWaste =
-    unitCost * (1 + option.ingredient.wastePercentage / 100)
-  return unitCostWithWaste * option.quantity
+  return option.ingredients.reduce((total, item) => {
+    const unitCost =
+      item.ingredient.purchasePrice / item.ingredient.conversionFactor
+    const unitCostWithWaste =
+      unitCost * (1 + item.ingredient.wastePercentage / 100)
+    return total + unitCostWithWaste * item.quantity
+  }, 0)
 }
 
 export function calculateSaleTotal(sale: SaleWithItems): number {

@@ -32,14 +32,18 @@ const recipeInclude = {
         where: { isActive: true },
         orderBy: { sortOrder: 'asc' as const },
         include: {
-          ingredient: {
-            select: {
-              id: true,
-              name: true,
-              baseUnit: true,
-              purchasePrice: true,
-              conversionFactor: true,
-              wastePercentage: true,
+          ingredients: {
+            include: {
+              ingredient: {
+                select: {
+                  id: true,
+                  name: true,
+                  baseUnit: true,
+                  purchasePrice: true,
+                  conversionFactor: true,
+                  wastePercentage: true,
+                },
+              },
             },
           },
         },
@@ -52,13 +56,31 @@ const recipeInclude = {
 function serializeRecipe(recipe: any) {
   return {
     ...recipe,
-    variants: recipe.variants.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variants: recipe.variants.map((variant: any) => ({
+      ...variant,
+      salePrice: Number(variant.salePrice),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (variant: any) => ({
-        ...variant,
-        salePrice: Number(variant.salePrice),
+      items: variant.items.map((item: any) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        ingredient: {
+          ...item.ingredient,
+          purchasePrice: Number(item.ingredient.purchasePrice),
+          conversionFactor: Number(item.ingredient.conversionFactor),
+          wastePercentage: Number(item.ingredient.wastePercentage),
+        },
+      })),
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    optionGroups: recipe.optionGroups.map((group: any) => ({
+      ...group,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: group.options.map((opt: any) => ({
+        ...opt,
+        priceModifier: Number(opt.priceModifier),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        items: variant.items.map((item: any) => ({
+        ingredients: opt.ingredients.map((item: any) => ({
           ...item,
           quantity: Number(item.quantity),
           ingredient: {
@@ -68,24 +90,6 @@ function serializeRecipe(recipe: any) {
             wastePercentage: Number(item.ingredient.wastePercentage),
           },
         })),
-      })
-    ),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    optionGroups: recipe.optionGroups.map((group: any) => ({
-      ...group,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      options: group.options.map((opt: any) => ({
-        ...opt,
-        priceModifier: Number(opt.priceModifier),
-        quantity: Number(opt.quantity),
-        ingredient: opt.ingredient
-          ? {
-              ...opt.ingredient,
-              purchasePrice: Number(opt.ingredient.purchasePrice),
-              conversionFactor: Number(opt.ingredient.conversionFactor),
-              wastePercentage: Number(opt.ingredient.wastePercentage),
-            }
-          : null,
       })),
     })),
   }

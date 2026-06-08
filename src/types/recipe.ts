@@ -1,13 +1,7 @@
-export type RecipeOptionWithIngredient = {
+export type RecipeOptionIngredient = {
   id: string
-  name: string
-  priceModifier: number
   quantity: number
-  isDefault: boolean
-  isActive: boolean
-  sortOrder: number
-  groupId: string
-  ingredientId: string | null
+  ingredientId: string
   ingredient: {
     id: string
     name: string
@@ -15,7 +9,18 @@ export type RecipeOptionWithIngredient = {
     purchasePrice: number
     conversionFactor: number
     wastePercentage: number
-  } | null
+  }
+}
+
+export type RecipeOptionWithIngredients = {
+  id: string
+  name: string
+  priceModifier: number
+  isDefault: boolean
+  isActive: boolean
+  sortOrder: number
+  groupId: string
+  ingredients: RecipeOptionIngredient[]
 }
 
 export type RecipeOptionGroupWithOptions = {
@@ -27,7 +32,7 @@ export type RecipeOptionGroupWithOptions = {
   recipeId: string
   createdAt: Date
   updatedAt: Date
-  options: RecipeOptionWithIngredient[]
+  options: RecipeOptionWithIngredients[]
 }
 
 export type RecipeVariantWithItems = {
@@ -77,13 +82,14 @@ export function calculateVariantCost(variant: RecipeVariantWithItems): number {
 }
 
 export function calculateOptionCost(
-  option: RecipeOptionWithIngredient
+  option: RecipeOptionWithIngredients
 ): number {
-  if (!option.ingredient || option.quantity === 0) return 0
-  const { purchasePrice, conversionFactor, wastePercentage } = option.ingredient
-  const unitCost = purchasePrice / conversionFactor
-  const unitCostWithWaste = unitCost * (1 + wastePercentage / 100)
-  return unitCostWithWaste * option.quantity
+  return option.ingredients.reduce((total, item) => {
+    const { purchasePrice, conversionFactor, wastePercentage } = item.ingredient
+    const unitCost = purchasePrice / conversionFactor
+    const unitCostWithWaste = unitCost * (1 + wastePercentage / 100)
+    return total + unitCostWithWaste * item.quantity
+  }, 0)
 }
 
 export function calculateVariantCostRange(
@@ -107,7 +113,6 @@ export function calculateVariantCostRange(
       minOptionsAdded += Math.min(...optionCosts)
       maxOptionsAdded += Math.max(...optionCosts)
     } else {
-      // Opcional: mínimo es 0, máximo es elegir todo (multiSelect) o el más caro
       if (group.multiSelect) {
         maxOptionsAdded += optionCosts.reduce((a, b) => a + b, 0)
       } else {

@@ -284,7 +284,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
           optionId: so.option.id,
           optionName: so.option.name,
           priceModifier: so.option.priceModifier,
-          quantity: so.option.quantity,
         })),
       })),
     })

@@ -120,7 +120,7 @@ model Ingredient {
   // Relaciones inversas
   recipeItems    RecipeItem[]
   stockMovements StockMovement[]
-  recipeOptions RecipeOption[]
+  recipeOptionIngredients RecipeOptionIngredient[]
 }
 
 // ------------------------------------------------------------
@@ -207,20 +207,30 @@ model RecipeOptionGroup {
 // ------------------------------------------------------------
 model RecipeOption {
   id            String  @id @default(cuid())
-  name          String  // "Mango", "Fresa", "Crema batida"
-  priceModifier Decimal @default(0) // cuánto suma al precio base
-  quantity      Decimal @default(0) // cantidad del ingrediente a usar
-  isDefault     Boolean @default(false) // opción preseleccionada
+  name          String
+  priceModifier Decimal @default(0)
+  isDefault     Boolean @default(false)
   isActive      Boolean @default(true)
   sortOrder     Int     @default(0)
 
   groupId String
   group   RecipeOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  ingredientId String?
-  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
-
+  ingredients     RecipeOptionIngredient[]
   saleItemOptions SaleItemOption[]
+}
+
+model RecipeOptionIngredient {
+  id           String @id @default(cuid())
+  quantity     Decimal
+
+  optionId     String
+  option       RecipeOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([optionId, ingredientId])
 }
 
 // ------------------------------------------------------------
@@ -229,15 +239,26 @@ model RecipeOption {
 // ------------------------------------------------------------
 model SaleItemOption {
   id            String  @id @default(cuid())
-  optionName    String  // snapshot del nombre al momento de vender
-  priceModifier Decimal // snapshot del precio al momento de vender
-  quantity      Decimal // snapshot de la cantidad al momento de vender
+  optionName    String
+  priceModifier Decimal
 
   saleItemId String
   saleItem   SaleItem @relation(fields: [saleItemId], references: [id])
 
   optionId String
   option   RecipeOption @relation(fields: [optionId], references: [id])
+
+  ingredientSnapshots SaleItemOptionIngredient[]
+}
+
+model SaleItemOptionIngredient {
+  id           String  @id @default(cuid())
+  ingredientId String
+  quantity     Decimal
+  unitCost     Decimal
+
+  saleItemOptionId String
+  saleItemOption   SaleItemOption @relation(fields: [saleItemOptionId], references: [id])
 }
 
 // ------------------------------------------------------------
