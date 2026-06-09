@@ -51,8 +51,8 @@ export function ChannelChart({ salesByChannel }: ChannelChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => [
-                `${value} venta${value !== 1 ? 's' : ''}`,
+              formatter={(value) => [
+                `${Number(value)} venta${Number(value) !== 1 ? 's' : ''}`,
                 'Cantidad',
               ]}
               contentStyle={{
