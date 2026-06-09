@@ -432,19 +432,21 @@ async function main() {
         create: [
           {
             name: 'Vainilla',
-            ingredientId: ingJarabeVainilla.id,
-            quantity: 30,
             priceModifier: 0,
             sortOrder: 0,
             isDefault: true,
+            ingredients: {
+              create: [{ ingredientId: ingJarabeVainilla.id, quantity: 30 }],
+            },
           },
           {
             name: 'Mango',
-            ingredientId: ingJarabeMango.id,
-            quantity: 30,
             priceModifier: 0,
             sortOrder: 1,
             isDefault: false,
+            ingredients: {
+              create: [{ ingredientId: ingJarabeMango.id, quantity: 30 }],
+            },
           },
         ],
       },
@@ -466,11 +468,12 @@ async function main() {
         create: [
           {
             name: 'Crema batida',
-            ingredientId: ingCrema.id,
-            quantity: 30,
             priceModifier: 5,
             sortOrder: 0,
             isDefault: false,
+            ingredients: {
+              create: [{ ingredientId: ingCrema.id, quantity: 30 }],
+            },
           },
         ],
       },
