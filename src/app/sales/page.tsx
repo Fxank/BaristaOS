@@ -2,6 +2,8 @@ import { Header } from '@/components/layout/Header'
 import { SalesClient } from '@/components/sales/SalesClient'
 import { getSales, getRecipesForSale } from '@/server/actions/sales'
 
+export const dynamic = 'force-dynamic'
+
 export default async function SalesPage() {
   const [salesResult, recipesResult] = await Promise.all([
     getSales(),

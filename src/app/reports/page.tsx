@@ -2,6 +2,8 @@ import { Header } from '@/components/layout/Header'
 import { ReportsClient } from '@/components/reports/ReportsClient'
 import { getReportData } from '@/server/actions/reports'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ReportsPage() {
   const result = await getReportData('month')
   const data = result.success && result.data ? result.data : null

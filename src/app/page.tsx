@@ -6,6 +6,8 @@ import { getDashboardStats } from '@/server/services/dashboard.service'
 import { ShoppingCart, DollarSign, BookOpen, AlertTriangle } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const stats = await getDashboardStats()
 

@@ -68,10 +68,11 @@ export function RevenueChart({ salesByDay }: RevenueChartProps) {
               tickFormatter={(v) => `$${v}`}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                formatCurrency(value),
-                name === 'revenue' ? 'Ingresos' : 'Ganancia',
-              ]}
+              formatter={(value, name) => {
+                const num = Number(value)
+                const label = name === 'revenue' ? 'Ingresos' : 'Ganancia'
+                return [formatCurrency(num), label]
+              }}
               labelFormatter={(label) => `Fecha: ${label}`}
               contentStyle={{
                 borderRadius: '8px',

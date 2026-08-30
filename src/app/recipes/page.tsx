@@ -6,6 +6,8 @@ import {
   getIngredientsForRecipe,
 } from '@/server/actions/recipes'
 
+export const dynamic = 'force-dynamic'
+
 export default async function RecipesPage() {
   const [recipesResult, categoriesResult, ingredientsResult] =
     await Promise.all([

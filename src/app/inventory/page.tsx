@@ -5,6 +5,8 @@ import {
   getStockMovements,
 } from '@/server/actions/inventory'
 
+export const dynamic = 'force-dynamic'
+
 export default async function InventoryPage() {
   const [inventoryResult, movementsResult] = await Promise.all([
     getInventoryOverview(),

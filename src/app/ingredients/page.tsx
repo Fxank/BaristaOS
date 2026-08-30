@@ -5,6 +5,8 @@ import {
   getIngredientCategories,
 } from '@/server/actions/ingredients'
 
+export const dynamic = 'force-dynamic'
+
 export default async function IngredientsPage() {
   const [ingredientsResult, categoriesResult] = await Promise.all([
     getIngredients(),
