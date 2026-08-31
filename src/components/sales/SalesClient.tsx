@@ -40,6 +40,7 @@ export function SalesClient({ sales, recipes }: SalesClientProps) {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         recipes={recipes}
+        showCosts={false}
       />
     </div>
   )

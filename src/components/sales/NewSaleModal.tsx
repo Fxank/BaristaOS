@@ -50,6 +50,7 @@ interface NewSaleModalProps {
   open: boolean
   onClose: () => void
   recipes: RecipeForSale[]
+  showCosts?: boolean
 }
 
 const CHANNELS = [
@@ -58,7 +59,12 @@ const CHANNELS = [
   { value: 'DELIVERY', label: 'Delivery' },
 ]
 
-export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
+export function NewSaleModal({
+  open,
+  onClose,
+  recipes,
+  showCosts = false,
+}: NewSaleModalProps) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [channel, setChannel] = useState('IN_STORE')
   const [discount, setDiscount] = useState('')
@@ -87,7 +93,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
 
   function handleVariantChange(variantId: string) {
     setSelectedVariantId(variantId)
-    // Pre-seleccionar opciones default
     const defaults: Record<string, string> = {}
     selectedRecipe?.optionGroups.forEach((group) => {
       const defaultOption = group.options.find((opt) => opt.isDefault)
@@ -100,7 +105,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
 
   function handleOptionChange(groupId: string, optionId: string) {
     setSelectedOptions((prev) => {
-      // Si ya está seleccionada, deseleccionar (toggle)
       if (prev[groupId] === optionId) {
         return { ...prev, [groupId]: '' }
       }
@@ -120,7 +124,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     })
   }
 
-  // Calcula el costo total incluyendo opciones seleccionadas
   function calculateTotalCost(
     variant: RecipeVariantForSale,
     groups: RecipeOptionGroupForSale[],
@@ -140,7 +143,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     return baseCost + optionsCost
   }
 
-  // Calcula el precio adicional de las opciones seleccionadas
   function calculateOptionsPrice(
     groups: RecipeOptionGroupForSale[],
     options: Record<string, string>
@@ -157,7 +159,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     }, 0)
   }
 
-  // Verifica si todas las opciones requeridas están seleccionadas
   function areRequiredOptionsFilled(): boolean {
     if (!selectedRecipe) return true
     return selectedRecipe.optionGroups
@@ -184,7 +185,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     const unitPrice = selectedVariant.salePrice + optionsPrice
     const quantity = parseInt(selectedQuantity) || 1
 
-    // Construir lista de opciones seleccionadas
     const chosenOptions: SelectedOption[] = []
     selectedRecipe.optionGroups.forEach((group) => {
       const selectedIds = (selectedOptions[group.id] ?? '')
@@ -322,7 +322,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
     onClose()
   }
 
-  // Preview del precio con opciones seleccionadas
   const previewOptionsPrice =
     selectedVariant && selectedRecipe
       ? calculateOptionsPrice(selectedRecipe.optionGroups, selectedOptions)
@@ -506,7 +505,6 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                     </div>
                   ))}
 
-                  {/* Preview precio con opciones */}
                   {previewOptionsPrice > 0 && (
                     <div className="bg-muted/50 mt-2 rounded-lg px-3 py-2 text-sm">
                       <span className="text-muted-foreground">
@@ -555,8 +553,13 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                         </p>
                       )}
                       <p className="text-muted-foreground text-xs">
-                        {formatCurrency(item.unitPrice)} c/u · Costo:{' '}
-                        {formatCurrency(item.unitCost)}
+                        {formatCurrency(item.unitPrice)} c/u
+                        {/* Solo mostrar costo si showCosts es true */}
+                        {showCosts && (
+                          <span className="ml-2 text-amber-600">
+                            · Costo: {formatCurrency(item.unitCost)}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -671,12 +674,17 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
                   {formatCurrency(total)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Ganancia estimada</span>
-                <span className="font-medium text-emerald-600">
-                  {formatCurrency(profit)}
-                </span>
-              </div>
+              {/* Solo mostrar ganancia si showCosts es true */}
+              {showCosts && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Ganancia estimada
+                  </span>
+                  <span className="font-medium text-emerald-600">
+                    {formatCurrency(profit)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
