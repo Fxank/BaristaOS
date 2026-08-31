@@ -10,14 +10,18 @@ import { SaleWithItems, RecipeForSale } from '@/types/sale'
 interface SalesClientProps {
   sales: SaleWithItems[]
   recipes: RecipeForSale[]
+  showCosts?: boolean
 }
 
-export function SalesClient({ sales, recipes }: SalesClientProps) {
+export function SalesClient({
+  sales,
+  recipes,
+  showCosts = false,
+}: SalesClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
     <div className="space-y-4">
-      {/* Barra de acciones */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="text-muted-foreground h-5 w-5" />
@@ -32,15 +36,13 @@ export function SalesClient({ sales, recipes }: SalesClientProps) {
         </Button>
       </div>
 
-      {/* Lista de ventas */}
-      <SalesList sales={sales} showCosts={false} />
+      <SalesList sales={sales} showCosts={showCosts} />
 
-      {/* Modal nueva venta */}
       <NewSaleModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         recipes={recipes}
-        showCosts={false}
+        showCosts={showCosts}
       />
     </div>
   )
