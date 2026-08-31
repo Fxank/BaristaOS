@@ -333,7 +333,7 @@ export function NewSaleModal({ open, onClose, recipes }: NewSaleModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] w-[95vw]! max-w-2xl! overflow-y-auto">
+      <DialogContent className="max-h-[85vh] w-[95vw]! max-w-2xl! overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
