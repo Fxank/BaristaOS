@@ -33,7 +33,7 @@ export function SalesClient({ sales, recipes }: SalesClientProps) {
       </div>
 
       {/* Lista de ventas */}
-      <SalesList sales={sales} />
+      <SalesList sales={sales} showCosts={false} />
 
       {/* Modal nueva venta */}
       <NewSaleModal

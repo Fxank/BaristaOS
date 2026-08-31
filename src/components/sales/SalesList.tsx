@@ -11,9 +11,10 @@ import { ShoppingCart } from 'lucide-react'
 
 interface SalesListProps {
   sales: SaleWithItems[]
+  showCosts?: boolean
 }
 
-export function SalesList({ sales }: SalesListProps) {
+export function SalesList({ sales, showCosts = false }: SalesListProps) {
   if (sales.length === 0) {
     return (
       <div className="border-border bg-card rounded-xl border p-12 text-center">
@@ -46,9 +47,11 @@ export function SalesList({ sales }: SalesListProps) {
               <th className="text-muted-foreground px-4 py-3 text-left font-medium">
                 Total
               </th>
-              <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                Ganancia
-              </th>
+              {showCosts && (
+                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
+                  Ganancia
+                </th>
+              )}
               <th className="text-muted-foreground px-4 py-3 text-left font-medium">
                 Fecha
               </th>
@@ -96,11 +99,13 @@ export function SalesList({ sales }: SalesListProps) {
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-emerald-600">
-                      {formatCurrency(profit)}
-                    </span>
-                  </td>
+                  {showCosts && (
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-emerald-600">
+                        {formatCurrency(profit)}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <span className="text-muted-foreground text-xs">
                       {new Date(sale.createdAt).toLocaleDateString('es-MX', {
