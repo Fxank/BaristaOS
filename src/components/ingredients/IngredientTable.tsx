@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
+//import { formatCurrency } from '@/lib/utils'
 import {
   getStockStatus,
   calculateIngredientUnitCost,
@@ -108,7 +108,7 @@ export function IngredientTable({ ingredients, onEdit }: IngredientTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <p className="text-foreground font-medium">
-                    {formatCurrency(unitCost)}
+                    ${unitCost.toFixed(4)}
                   </p>
                   <p className="text-muted-foreground text-xs">
                     por {ingredient.baseUnit}

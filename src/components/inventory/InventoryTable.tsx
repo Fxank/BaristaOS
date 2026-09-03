@@ -103,7 +103,7 @@ export function InventoryTable({
                             : 'text-foreground'
                       }`}
                     >
-                      {ingredient.currentStock.toFixed(2)}{' '}
+                      {Number(ingredient.currentStock).toFixed(4)}{' '}
                       {ingredient.purchaseUnit}
                     </p>
                   </td>

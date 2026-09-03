@@ -97,8 +97,8 @@ export function RestockModal({ ingredient, onClose }: RestockModalProps) {
             <input
               id="quantity"
               type="number"
-              step="0.01"
-              min="0.01"
+              step="any"
+              min="0"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Ej: 5"

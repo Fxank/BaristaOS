@@ -140,7 +140,10 @@ const posSaleSchema = z.object({
   channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
   notes: z.string().nullable().optional(),
   discount: z.number().min(0).default(0),
-  createdAt: z.string().optional(),
+  createdAt: z
+    .union([z.string(), z.date()])
+    .optional()
+    .transform((val) => (val ? new Date(val) : undefined)),
   items: z.array(posSaleItemSchema).min(1),
 })
 
@@ -205,7 +208,12 @@ export async function syncPendingSales(rawSales: unknown[]) {
               : `[local:${data.localId}]`,
             discount: data.discount,
             status: 'COMPLETED',
-            createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+            createdAt:
+              data.createdAt instanceof Date
+                ? data.createdAt
+                : data.createdAt
+                  ? new Date(data.createdAt)
+                  : new Date(),
             items: {
               create: data.items.map((item) => ({
                 recipeId: item.recipeId,

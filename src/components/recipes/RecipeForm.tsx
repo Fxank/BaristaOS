@@ -19,7 +19,6 @@ import {
 } from '@/types/recipe'
 import { createRecipe, updateRecipe } from '@/server/actions/recipes'
 
-const SIZES = ['Único', 'Chico', 'Mediano', 'Grande', 'Extra Grande']
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'Activa' },
   { value: 'INACTIVE', label: 'Inactiva' },
@@ -319,23 +318,15 @@ export function RecipeForm({
                 <div className="grid flex-1 grid-cols-2 gap-3">
                   <div>
                     <Label>Tamaño</Label>
-                    <Select
+                    <input
+                      type="text"
                       value={variant.size}
-                      onValueChange={(val) =>
-                        val && updateVariant(variantIndex, 'size', val)
+                      onChange={(e) =>
+                        updateVariant(variantIndex, 'size', e.target.value)
                       }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue>{variant.size}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SIZES.map((size) => (
-                          <SelectItem key={size} value={size}>
-                            {size}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Ej: Clásico, Max, Único"
+                      className="border-input bg-background focus:ring-ring mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+                    />
                   </div>
                   <div>
                     <Label>Precio de venta ($MXN)</Label>

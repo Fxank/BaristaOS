@@ -45,3 +45,4 @@ next-env.d.ts
 
 prisma/seed.local.ts
 prisma/export-seed.ts
+prisma/clear-sales.ts
