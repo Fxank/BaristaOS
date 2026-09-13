@@ -63,6 +63,7 @@ export interface PendingSale {
   syncedAt: Date | null // null = pendiente, Date = sincronizado
   createdAt: Date
   channel: string
+  paymentMethod: string
   notes: string | null
   discount: number
   items: PendingSaleItem[]

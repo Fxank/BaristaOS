@@ -67,6 +67,9 @@ export function NewSaleModal({
 }: NewSaleModalProps) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [channel, setChannel] = useState('IN_STORE')
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER'>(
+    'CASH'
+  )
   const [discount, setDiscount] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
@@ -272,6 +275,7 @@ export function NewSaleModal({
 
     const result = await createSale({
       channel,
+      paymentMethod,
       notes: notes || undefined,
       discount: discountAmount,
       items: cart.map((item) => ({
@@ -315,6 +319,7 @@ export function NewSaleModal({
     setSelectedQuantity('1')
     setSelectedOptions({})
     setChannel('IN_STORE')
+    setPaymentMethod('CASH')
     setDiscount('')
     setNotes('')
     setError('')
@@ -624,6 +629,34 @@ export function NewSaleModal({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label>Método de pago</Label>
+              <div className="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CASH')}
+                  className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                    paymentMethod === 'CASH'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted'
+                  }`}
+                >
+                  💵 Efectivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('TRANSFER')}
+                  className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                    paymentMethod === 'TRANSFER'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted'
+                  }`}
+                >
+                  📱 Transferencia
+                </button>
+              </div>
             </div>
 
             <div>

@@ -138,6 +138,7 @@ const posSaleItemSchema = z.object({
 const posSaleSchema = z.object({
   localId: z.string(),
   channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
+  paymentMethod: z.enum(['CASH', 'TRANSFER']).default('CASH'),
   notes: z.string().nullable().optional(),
   discount: z.number().min(0).default(0),
   createdAt: z
@@ -203,6 +204,7 @@ export async function syncPendingSales(rawSales: unknown[]) {
           data: {
             folio,
             channel: data.channel,
+            paymentMethod: data.paymentMethod,
             notes: data.notes
               ? `${data.notes} [local:${data.localId}]`
               : `[local:${data.localId}]`,

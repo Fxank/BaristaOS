@@ -50,6 +50,9 @@ export function POSClient({ userName }: POSClientProps) {
   >({})
   const [successMessage, setSuccessMessage] = useState('')
   const [view, setView] = useState<'menu' | 'cart'>('menu')
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER'>(
+    'CASH'
+  )
 
   // Mantener useEffect para futuras funcionalidades
   useEffect(() => {}, [])
@@ -226,6 +229,7 @@ export function POSClient({ userName }: POSClientProps) {
       localId: crypto.randomUUID(),
       createdAt: new Date(),
       channel: 'IN_STORE',
+      paymentMethod,
       notes: null,
       discount: 0,
       items: cart.map((item) => ({
@@ -331,6 +335,8 @@ export function POSClient({ userName }: POSClientProps) {
                 total={cartTotal}
                 onUpdateQuantity={handleUpdateQuantity}
                 onCheckout={handleCheckout}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
               />
             )}
           </div>
@@ -364,6 +370,8 @@ export function POSClient({ userName }: POSClientProps) {
               total={cartTotal}
               onUpdateQuantity={handleUpdateQuantity}
               onCheckout={handleCheckout}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
             />
           </div>
         </div>

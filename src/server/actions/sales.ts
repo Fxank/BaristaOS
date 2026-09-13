@@ -23,6 +23,7 @@ const saleItemSchema = z.object({
 
 const saleSchema = z.object({
   channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
+  paymentMethod: z.enum(['CASH', 'TRANSFER']).default('CASH'),
   notes: z.string().optional(),
   discount: z.number().min(0).default(0),
   items: z
@@ -199,6 +200,7 @@ export async function createSale(rawData: unknown) {
         data: {
           folio,
           channel: data.channel,
+          paymentMethod: data.paymentMethod,
           notes: data.notes || null,
           discount: data.discount,
           status: 'COMPLETED',

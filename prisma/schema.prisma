@@ -41,6 +41,11 @@ enum SaleChannel {
   DELIVERY  // a domicilio
 }
 
+enum PaymentMethod {
+  CASH      // Efectivo
+  TRANSFER  // Transferencia
+}
+
 enum MovementType {
   PURCHASE   // reabastecimiento de ingrediente
   SALE_USE   // descuento automático por venta
@@ -270,6 +275,7 @@ model Sale {
   folio     String      @unique // número legible: VTA-0001
   status    SaleStatus  @default(COMPLETED)
   channel   SaleChannel @default(IN_STORE)
+  paymentMethod PaymentMethod @default(CASH)
   notes     String?
   discount  Decimal     @default(0)
   createdAt DateTime    @default(now())

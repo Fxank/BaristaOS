@@ -3,6 +3,7 @@ export type SaleWithItems = {
   folio: string
   status: 'COMPLETED' | 'CANCELLED' | 'REFUNDED'
   channel: 'IN_STORE' | 'TAKEOUT' | 'DELIVERY'
+  paymentMethod: 'CASH' | 'TRANSFER'
   notes: string | null
   discount: number
   createdAt: Date
@@ -15,6 +16,11 @@ export type SaleWithItems = {
     recipeVariant: { id: string; size: string }
   }[]
 }
+
+export const PAYMENT_METHOD_LABELS = {
+  CASH: 'Efectivo',
+  TRANSFER: 'Transferencia',
+} as const
 
 export type IngredientForSale = {
   id: string

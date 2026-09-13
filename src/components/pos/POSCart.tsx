@@ -10,6 +10,8 @@ interface POSCartProps {
   total: number
   onUpdateQuantity: (localId: string, quantity: number) => void
   onCheckout: () => void
+  paymentMethod: 'CASH' | 'TRANSFER'
+  onPaymentMethodChange: (method: 'CASH' | 'TRANSFER') => void
 }
 
 export function POSCart({
@@ -17,6 +19,8 @@ export function POSCart({
   total,
   onUpdateQuantity,
   onCheckout,
+  paymentMethod,
+  onPaymentMethodChange,
 }: POSCartProps) {
   if (cart.length === 0) {
     return (
@@ -95,7 +99,6 @@ export function POSCart({
         ))}
       </div>
 
-      {/* Total y botón de cobrar */}
       <div className="border-border space-y-3 border-t p-4">
         <div className="flex items-center justify-between">
           <span className="text-foreground font-semibold">Total</span>
@@ -103,6 +106,33 @@ export function POSCart({
             {formatCurrency(total)}
           </span>
         </div>
+
+        {/* Método de pago */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onPaymentMethodChange('CASH')}
+            className={`flex-1 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
+              paymentMethod === 'CASH'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-background text-foreground'
+            }`}
+          >
+            💵 Efectivo
+          </button>
+          <button
+            type="button"
+            onClick={() => onPaymentMethodChange('TRANSFER')}
+            className={`flex-1 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
+              paymentMethod === 'TRANSFER'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-background text-foreground'
+            }`}
+          >
+            📱 Transferencia
+          </button>
+        </div>
+
         <Button onClick={onCheckout} className="w-full" size="lg">
           Registrar venta
         </Button>

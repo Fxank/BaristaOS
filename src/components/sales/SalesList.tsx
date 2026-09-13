@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/utils'
 import {
   SaleWithItems,
   CHANNEL_LABELS,
+  PAYMENT_METHOD_LABELS,
   calculateSaleTotal,
   calculateSaleProfit,
 } from '@/types/sale'
@@ -43,6 +44,9 @@ export function SalesList({ sales, showCosts = false }: SalesListProps) {
               </th>
               <th className="text-muted-foreground px-4 py-3 text-left font-medium">
                 Canal
+              </th>
+              <th className="text-muted-foreground px-4 py-3 text-left font-medium">
+                Pago
               </th>
               <th className="text-muted-foreground px-4 py-3 text-left font-medium">
                 Total
@@ -87,6 +91,11 @@ export function SalesList({ sales, showCosts = false }: SalesListProps) {
                   <td className="px-4 py-3">
                     <span className="text-muted-foreground">
                       {CHANNEL_LABELS[sale.channel]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-muted-foreground">
+                      {PAYMENT_METHOD_LABELS[sale.paymentMethod]}
                     </span>
                   </td>
                   <td className="px-4 py-3">
