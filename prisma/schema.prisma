@@ -323,3 +323,38 @@ model StockMovement {
   ingredientId String
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
 }
+
+// ------------------------------------------------------------
+// LoyaltyCard - Tarjeta de lealtad por cliente
+// ------------------------------------------------------------
+model LoyaltyCard {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String  @unique
+  stamps    Int      @default(0)
+  totalRedeemed Int  @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  redemptions LoyaltyRedemption[]
+}
+
+// ------------------------------------------------------------
+// LoyaltyRedemption - Historial de canjes
+// ------------------------------------------------------------
+model LoyaltyRedemption {
+  id        String   @id @default(cuid())
+  cardId    String
+  card      LoyaltyCard @relation(fields: [cardId], references: [id])
+  stampsBefore Int
+  stampsAfter  Int
+  type      RedemptionType
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+enum RedemptionType {
+  STAMP_ADDED    // se agregó un sello
+  REWARD_CLAIMED // se canjeó bebida gratis
+}

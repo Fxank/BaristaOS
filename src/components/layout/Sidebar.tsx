@@ -13,6 +13,7 @@ import {
   BarChart3,
   Coffee,
   Menu,
+  Star,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
@@ -23,6 +24,7 @@ const navigation = [
   { label: 'Ventas', href: '/sales', icon: ShoppingCart },
   { label: 'Inventario', href: '/inventory', icon: Package },
   { label: 'Reportes', href: '/reports', icon: BarChart3 },
+  { label: 'Lealtad', href: '/loyalty', icon: Star },
 ]
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
