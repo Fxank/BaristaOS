@@ -124,15 +124,17 @@ export async function addStamp(cardId: string, purchaseTotal: number) {
 
     revalidatePath('/loyalty')
 
-    const newTotal = stampsAfter
-    const stampsLeft = STAMPS_FOR_REWARD - (newTotal % STAMPS_FOR_REWARD)
+    const canRedeem = stampsAfter >= STAMPS_FOR_REWARD
+    const stampsLeft = canRedeem
+      ? 0
+      : STAMPS_FOR_REWARD - (stampsAfter % STAMPS_FOR_REWARD)
 
     return {
       success: true,
       data: {
-        stamps: newTotal,
-        stampsLeft: stampsLeft === STAMPS_FOR_REWARD ? 0 : stampsLeft,
-        canRedeem: newTotal % STAMPS_FOR_REWARD === 0,
+        stamps: stampsAfter,
+        stampsLeft,
+        canRedeem,
       },
     }
   } catch (error) {
@@ -149,10 +151,10 @@ export async function redeemReward(cardId: string) {
 
     if (!card) return { success: false, error: 'Tarjeta no encontrada' }
 
-    if (card.stamps < STAMPS_FOR_REWARD) {
+    if (card.stamps < 10) {
       return {
         success: false,
-        error: `Faltan ${STAMPS_FOR_REWARD - card.stamps} sellos para el canje`,
+        error: `Faltan ${10 - card.stamps} sellos para el canje`,
       }
     }
 
@@ -204,5 +206,109 @@ export async function getLoyaltyCardDetail(cardId: string) {
   } catch (error) {
     console.error('Error fetching card detail:', error)
     return { success: false, error: 'No se pudo cargar la tarjeta' }
+  }
+}
+
+export async function updateLoyaltyCard(cardId: string, rawData: unknown) {
+  try {
+    const validated = loyaltyCardSchema.safeParse(rawData)
+    if (!validated.success) {
+      return {
+        success: false,
+        error: 'Datos inválidos',
+        fieldErrors: validated.error.flatten().fieldErrors,
+      }
+    }
+
+    const data = validated.data
+
+    // Verificar que el teléfono no lo use otra tarjeta
+    const existing = await prisma.loyaltyCard.findFirst({
+      where: {
+        phone: data.phone,
+        NOT: { id: cardId },
+      },
+    })
+
+    if (existing) {
+      return {
+        success: false,
+        error: 'Ya existe otra tarjeta con ese teléfono',
+      }
+    }
+
+    await prisma.loyaltyCard.update({
+      where: { id: cardId },
+      data: {
+        name: data.name,
+        phone: data.phone,
+      },
+    })
+
+    revalidatePath('/loyalty')
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating loyalty card:', error)
+    return { success: false, error: 'No se pudo actualizar la tarjeta' }
+  }
+}
+
+export async function deleteLoyaltyCard(cardId: string) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.loyaltyRedemption.deleteMany({ where: { cardId } })
+      await tx.loyaltyCard.delete({ where: { id: cardId } })
+    })
+
+    revalidatePath('/loyalty')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting loyalty card:', error)
+    return { success: false, error: 'No se pudo eliminar la tarjeta' }
+  }
+}
+
+export async function findOrCreateLoyaltyCard(phone: string, name?: string) {
+  try {
+    // Buscar si existe
+    const existing = await prisma.loyaltyCard.findUnique({
+      where: { phone },
+    })
+
+    if (existing) {
+      return { success: true, data: existing, created: false }
+    }
+
+    // No existe — si viene nombre, crear
+    if (!name) {
+      return {
+        success: false,
+        notFound: true,
+        error: 'Cliente no encontrado en el programa de lealtad',
+      }
+    }
+
+    const card = await prisma.loyaltyCard.create({
+      data: { name, phone, stamps: 0 },
+    })
+
+    revalidatePath('/loyalty')
+    return { success: true, data: card, created: true }
+  } catch (error) {
+    console.error('Error in findOrCreateLoyaltyCard:', error)
+    return { success: false, error: 'Error al buscar el cliente' }
+  }
+}
+
+export async function getLoyaltyCardByPhone(phone: string) {
+  try {
+    const card = await prisma.loyaltyCard.findUnique({
+      where: { phone },
+    })
+    if (!card) return { success: false, error: 'No encontrado' }
+    return { success: true, data: card }
+  } catch (error) {
+    console.error('Error fetching loyalty card by phone:', error)
+    return { success: false, error: 'Error al buscar' }
   }
 }

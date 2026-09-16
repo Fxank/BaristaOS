@@ -7,6 +7,10 @@ import { POSCart } from '@/components/pos/POSCart'
 import { POSStatusBar } from '@/components/pos/POSStatusBar'
 import { LocalRecipe, LocalVariant, LocalOption } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
+import { findOrCreateLoyaltyCard } from '@/server/actions/loyalty'
+import { redeemReward } from '@/server/actions/loyalty'
+import { Star, Gift } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export interface CartItem {
   localId: string
@@ -53,6 +57,18 @@ export function POSClient({ userName }: POSClientProps) {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER'>(
     'CASH'
   )
+  const [loyaltyPhone, setLoyaltyPhone] = useState('')
+  const [loyaltyStatus, setLoyaltyStatus] = useState<
+    'idle' | 'not-found' | 'found' | 'creating'
+  >('idle')
+  const [newClientName, setNewClientName] = useState('')
+  const [loyaltyResult, setLoyaltyResult] = useState<{
+    name: string
+    stamps: number
+    stampsOnCard: number
+    canRedeem: boolean
+    cardId: string
+  } | null>(null)
 
   // Mantener useEffect para futuras funcionalidades
   useEffect(() => {}, [])
@@ -222,14 +238,61 @@ export function POSClient({ userName }: POSClientProps) {
     }
   }
 
+  async function handleLoyaltyPhoneChange(phone: string) {
+    setLoyaltyPhone(phone)
+    setLoyaltyStatus('idle')
+
+    if (phone.length >= 10) {
+      const result = await findOrCreateLoyaltyCard(phone)
+      if (result.success && result.data) {
+        setLoyaltyStatus('found')
+        // Verificar si ya tiene canje disponible
+        const card = result.data
+        const stampsOnCard = card.stamps % 10
+        const canRedeem = card.stamps >= 10
+        if (canRedeem) {
+          setLoyaltyResult({
+            name: card.name,
+            stamps: card.stamps,
+            stampsOnCard,
+            canRedeem: true,
+            cardId: card.id,
+          })
+        }
+      } else if ('notFound' in result && result.notFound) {
+        setLoyaltyStatus('not-found')
+      }
+    }
+  }
+
+  async function handleConfirmNewClient() {
+    if (!newClientName || !loyaltyPhone) return
+    setLoyaltyStatus('creating')
+
+    const result = await findOrCreateLoyaltyCard(loyaltyPhone, newClientName)
+    if (result.success) {
+      setLoyaltyStatus('found')
+      setNewClientName('')
+    } else {
+      setLoyaltyStatus('idle')
+    }
+  }
+
+  function handleCancelNewClient() {
+    setLoyaltyStatus('idle')
+    setLoyaltyPhone('')
+    setNewClientName('')
+  }
+
   async function handleCheckout() {
     if (cart.length === 0) return
 
-    await saveSaleLocally({
+    const saleData = {
       localId: crypto.randomUUID(),
       createdAt: new Date(),
-      channel: 'IN_STORE',
+      channel: 'IN_STORE' as const,
       paymentMethod,
+      loyaltyPhone: loyaltyStatus === 'found' ? loyaltyPhone : null,
       notes: null,
       discount: 0,
       items: cart.map((item) => ({
@@ -242,17 +305,48 @@ export function POSClient({ userName }: POSClientProps) {
         unitCost: item.unitCost,
         selectedOptions: item.selectedOptions,
       })),
-    })
+    }
+
+    await saveSaleLocally(saleData)
+
+    // Si hay lealtad y hay internet, consultar el estado actualizado
+    if (loyaltyStatus === 'found' && loyaltyPhone && navigator.onLine) {
+      try {
+        const { getLoyaltyCardByPhone } =
+          await import('@/server/actions/loyalty')
+        const result = await getLoyaltyCardByPhone(loyaltyPhone)
+        if (result.success && result.data) {
+          const card = result.data
+          const stampsOnCard = card.stamps % 10
+          const canRedeem = card.stamps > 0 && card.stamps % 10 === 0
+          setLoyaltyResult({
+            name: card.name,
+            stamps: card.stamps,
+            stampsOnCard,
+            canRedeem,
+            cardId: card.id,
+          })
+        }
+      } catch (e) {
+        console.error('Error fetching loyalty result:', e)
+      }
+    }
 
     const total = cart.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity,
       0
     )
-    setSuccessMessage(`✅ Venta registrada — ${formatCurrency(total)}`)
-    setCart([])
-    setView('menu')
 
-    setTimeout(() => setSuccessMessage(''), 3000)
+    if (!loyaltyResult) {
+      setSuccessMessage(`✅ Venta registrada — ${formatCurrency(total)}`)
+      setTimeout(() => setSuccessMessage(''), 3000)
+    }
+
+    setCart([])
+    setLoyaltyPhone('')
+    setLoyaltyStatus('idle')
+    setNewClientName('')
+    setView('menu')
   }
 
   const cartTotal = cart.reduce(
@@ -337,6 +431,13 @@ export function POSClient({ userName }: POSClientProps) {
                 onCheckout={handleCheckout}
                 paymentMethod={paymentMethod}
                 onPaymentMethodChange={setPaymentMethod}
+                loyaltyPhone={loyaltyPhone}
+                onLoyaltyPhoneChange={handleLoyaltyPhoneChange}
+                loyaltyStatus={loyaltyStatus}
+                newClientName={newClientName}
+                onNewClientNameChange={setNewClientName}
+                onConfirmNewClient={handleConfirmNewClient}
+                onCancelNewClient={handleCancelNewClient}
               />
             )}
           </div>
@@ -372,10 +473,95 @@ export function POSClient({ userName }: POSClientProps) {
               onCheckout={handleCheckout}
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
+              loyaltyPhone={loyaltyPhone}
+              onLoyaltyPhoneChange={handleLoyaltyPhoneChange}
+              loyaltyStatus={loyaltyStatus}
+              newClientName={newClientName}
+              onNewClientNameChange={setNewClientName}
+              onConfirmNewClient={handleConfirmNewClient}
+              onCancelNewClient={handleCancelNewClient}
             />
           </div>
         </div>
       </div>
+
+      {/* Modal de resultado de lealtad */}
+      {loyaltyResult && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="bg-card border-border w-full max-w-sm space-y-4 rounded-2xl border p-5">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <p className="text-foreground font-semibold">
+                Lealtad — {loyaltyResult.name}
+              </p>
+            </div>
+
+            {/* Grid de sellos */}
+            <div className="grid grid-cols-5 gap-1.5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+                    i < loyaltyResult.stampsOnCard
+                      ? 'border-amber-400 bg-amber-400'
+                      : 'border-border bg-muted/30'
+                  }`}
+                >
+                  {i < loyaltyResult.stampsOnCard && (
+                    <Star className="h-4 w-4 fill-white text-white" />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {loyaltyResult.canRedeem ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-600">
+                  🎉 ¡{loyaltyResult.name} tiene una bebida gratis!
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLoyaltyResult(null)}
+                    className="flex-1"
+                  >
+                    Guardar para después
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      await redeemReward(loyaltyResult.cardId)
+                      setLoyaltyResult(null)
+                      setSuccessMessage('🎁 ¡Bebida gratis canjeada!')
+                      setTimeout(() => setSuccessMessage(''), 3000)
+                    }}
+                    className="flex-1 bg-amber-500 text-white hover:bg-amber-600"
+                  >
+                    <Gift className="mr-1 h-4 w-4" />
+                    Canjear ahora
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-sm">
+                  {10 - loyaltyResult.stampsOnCard} sello
+                  {10 - loyaltyResult.stampsOnCard !== 1 ? 's' : ''} para bebida
+                  gratis
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setLoyaltyResult(null)}
+                  className="w-full"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

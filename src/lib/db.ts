@@ -64,6 +64,7 @@ export interface PendingSale {
   createdAt: Date
   channel: string
   paymentMethod: string
+  loyaltyPhone: string | null
   notes: string | null
   discount: number
   items: PendingSaleItem[]

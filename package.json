@@ -12,7 +12,10 @@
     "db:seed:local": "tsx prisma/seed.local.ts",
     "db:export": "tsx prisma/export-seed.ts",
     "db:studio": "prisma studio",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "db:clear:sales": "tsx prisma/clear-sales.ts",
+    "db:clear:loyalty": "tsx prisma/clear-loyalty.ts",
+    "db:clear:all": "tsx prisma/clear-all.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

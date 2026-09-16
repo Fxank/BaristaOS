@@ -18,7 +18,12 @@ export default auth((req) => {
   }
 
   // Cajero solo puede acceder a /pos
-  if (isLoggedIn && role === 'CASHIER' && pathname !== '/pos') {
+  if (
+    isLoggedIn &&
+    role === 'CASHIER' &&
+    pathname !== '/pos' &&
+    pathname !== '/loyalty'
+  ) {
     return NextResponse.redirect(new URL('/pos', req.url))
   }
 

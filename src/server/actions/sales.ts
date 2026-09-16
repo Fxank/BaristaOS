@@ -24,6 +24,7 @@ const saleItemSchema = z.object({
 const saleSchema = z.object({
   channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
   paymentMethod: z.enum(['CASH', 'TRANSFER']).default('CASH'),
+  loyaltyPhone: z.string().optional(),
   notes: z.string().optional(),
   discount: z.number().min(0).default(0),
   items: z
@@ -297,6 +298,40 @@ export async function createSale(rawData: unknown) {
         }
       }
 
+      // Agregar sellos de lealtad automáticamente
+      if (data.loyaltyPhone) {
+        const loyaltyCard = await tx.loyaltyCard.findUnique({
+          where: { phone: data.loyaltyPhone },
+        })
+
+        if (loyaltyCard) {
+          const MIN_FOR_STAMP = 50
+          const stampsToAdd = data.items
+            .filter((item) => item.unitPrice >= MIN_FOR_STAMP)
+            .reduce((total, item) => total + item.quantity, 0)
+
+          if (stampsToAdd > 0) {
+            const stampsBefore = loyaltyCard.stamps
+            const stampsAfter = loyaltyCard.stamps + stampsToAdd
+
+            await tx.loyaltyCard.update({
+              where: { id: loyaltyCard.id },
+              data: { stamps: stampsAfter },
+            })
+
+            await tx.loyaltyRedemption.create({
+              data: {
+                cardId: loyaltyCard.id,
+                stampsBefore,
+                stampsAfter,
+                type: 'STAMP_ADDED',
+                notes: `Venta ${folio} — ${stampsToAdd} sello${stampsToAdd !== 1 ? 's' : ''} automático${stampsToAdd !== 1 ? 's' : ''}`,
+              },
+            })
+          }
+        }
+      }
+
       return newSale
     })
 
@@ -304,7 +339,29 @@ export async function createSale(rawData: unknown) {
     revalidatePath('/inventory')
     revalidatePath('/')
 
-    return { success: true, data: { folio: sale.folio } }
+    return {
+      success: true,
+      data: {
+        folio: sale.folio,
+        loyaltyResult: data.loyaltyPhone
+          ? await (async () => {
+              const card = await prisma.loyaltyCard.findUnique({
+                where: { phone: data.loyaltyPhone! },
+              })
+              if (!card) return null
+              const stampsOnCard = card.stamps % 10
+              const canRedeem = card.stamps >= 10
+              return {
+                name: card.name,
+                stamps: card.stamps,
+                stampsOnCard,
+                canRedeem,
+                cardId: card.id,
+              }
+            })()
+          : null,
+      },
+    }
   } catch (error) {
     console.error('Error creating sale:', error)
     return { success: false, error: 'No se pudo registrar la venta' }

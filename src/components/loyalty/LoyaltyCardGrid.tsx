@@ -22,8 +22,7 @@ export function LoyaltyCardGrid({ cards, onSelectCard }: LoyaltyCardGridProps) {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => {
         const stampsOnCurrentCard = card.stamps % STAMPS_FOR_REWARD
-        const canRedeem =
-          card.stamps > 0 && card.stamps % STAMPS_FOR_REWARD === 0
+        const canRedeem = card.stamps >= 10
         const stampsLeft = canRedeem
           ? 0
           : STAMPS_FOR_REWARD - stampsOnCurrentCard

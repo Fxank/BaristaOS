@@ -12,6 +12,13 @@ interface POSCartProps {
   onCheckout: () => void
   paymentMethod: 'CASH' | 'TRANSFER'
   onPaymentMethodChange: (method: 'CASH' | 'TRANSFER') => void
+  loyaltyPhone: string
+  onLoyaltyPhoneChange: (phone: string) => void
+  loyaltyStatus: 'idle' | 'not-found' | 'found' | 'creating'
+  newClientName: string
+  onNewClientNameChange: (name: string) => void
+  onConfirmNewClient: () => void
+  onCancelNewClient: () => void
 }
 
 export function POSCart({
@@ -21,6 +28,13 @@ export function POSCart({
   onCheckout,
   paymentMethod,
   onPaymentMethodChange,
+  loyaltyPhone,
+  onLoyaltyPhoneChange,
+  loyaltyStatus,
+  newClientName,
+  onNewClientNameChange,
+  onConfirmNewClient,
+  onCancelNewClient,
 }: POSCartProps) {
   if (cart.length === 0) {
     return (
@@ -105,6 +119,63 @@ export function POSCart({
           <span className="text-foreground text-xl font-bold">
             {formatCurrency(total)}
           </span>
+        </div>
+
+        {/* Lealtad */}
+        <div className="space-y-2">
+          <p className="text-foreground text-sm font-medium">
+            Teléfono lealtad (opcional)
+          </p>
+          <input
+            type="tel"
+            value={loyaltyPhone}
+            onChange={(e) => onLoyaltyPhoneChange(e.target.value)}
+            placeholder="5551234567"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+          />
+
+          {loyaltyStatus === 'found' && (
+            <p className="text-xs font-medium text-emerald-600">
+              ✅ Cliente registrado — se agregarán sellos automáticamente
+            </p>
+          )}
+
+          {loyaltyStatus === 'not-found' && (
+            <div className="border-border bg-muted/30 space-y-2 rounded-lg border p-3">
+              <p className="text-xs text-amber-600">
+                ⚠️ No registrado — ¿registrar cliente?
+              </p>
+              <input
+                type="text"
+                value={newClientName}
+                onChange={(e) => onNewClientNameChange(e.target.value)}
+                placeholder="Nombre del cliente"
+                className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onCancelNewClient}
+                  className="text-muted-foreground hover:text-foreground text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirmNewClient}
+                  className="bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                >
+                  Registrar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loyaltyStatus === 'creating' && (
+            <p className="text-muted-foreground text-xs">
+              Registrando cliente...
+            </p>
+          )}
         </div>
 
         {/* Método de pago */}

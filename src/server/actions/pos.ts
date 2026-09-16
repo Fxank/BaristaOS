@@ -139,6 +139,7 @@ const posSaleSchema = z.object({
   localId: z.string(),
   channel: z.enum(['IN_STORE', 'TAKEOUT', 'DELIVERY']),
   paymentMethod: z.enum(['CASH', 'TRANSFER']).default('CASH'),
+  loyaltyPhone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   discount: z.number().min(0).default(0),
   createdAt: z
@@ -294,6 +295,40 @@ export async function syncPendingSales(rawSales: unknown[]) {
                   type: 'SALE_USE',
                   quantity: -stockToDeduct,
                   reason: `Venta ${folio} (sync offline) — opción: ${saleItemOption.optionName}`,
+                },
+              })
+            }
+          }
+        }
+
+        // Agregar sellos de lealtad
+        if (data.loyaltyPhone) {
+          const loyaltyCard = await tx.loyaltyCard.findUnique({
+            where: { phone: data.loyaltyPhone },
+          })
+
+          if (loyaltyCard) {
+            const MIN_FOR_STAMP = 50
+            const stampsToAdd = data.items
+              .filter((item) => item.unitPrice >= MIN_FOR_STAMP)
+              .reduce((total, item) => total + item.quantity, 0)
+
+            if (stampsToAdd > 0) {
+              const stampsBefore = loyaltyCard.stamps
+              const stampsAfter = loyaltyCard.stamps + stampsToAdd
+
+              await tx.loyaltyCard.update({
+                where: { id: loyaltyCard.id },
+                data: { stamps: stampsAfter },
+              })
+
+              await tx.loyaltyRedemption.create({
+                data: {
+                  cardId: loyaltyCard.id,
+                  stampsBefore,
+                  stampsAfter,
+                  type: 'STAMP_ADDED',
+                  notes: `Venta ${folio} (sync offline) — ${stampsToAdd} sello${stampsToAdd !== 1 ? 's' : ''} automático${stampsToAdd !== 1 ? 's' : ''}`,
                 },
               })
             }
