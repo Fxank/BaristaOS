@@ -46,6 +46,7 @@ next-env.d.ts
 prisma/seed.local.ts
 prisma/export-seed.ts
 prisma/clear-sales.ts
+prisma/sync-recipes.ts
 
 prisma/clear-sales.ts
 prisma/clear-loyalty.ts
