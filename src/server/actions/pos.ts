@@ -154,9 +154,15 @@ async function generateFolio(): Promise<string> {
     orderBy: { createdAt: 'desc' },
     select: { folio: true },
   })
+
   if (!lastSale) return 'VTA-0001'
-  const lastNumber = parseInt(lastSale.folio.split('-')[1])
-  return `VTA-${(lastNumber + 1).toString().padStart(4, '0')}`
+
+  const match = lastSale.folio.match(/VTA-(\d+)/)
+  if (!match) return 'VTA-0001'
+
+  const lastNumber = parseInt(match[1])
+  const nextNumber = lastNumber + 1
+  return `VTA-${nextNumber.toString().padStart(4, '0')}`
 }
 
 // Sincroniza ventas pendientes con el servidor

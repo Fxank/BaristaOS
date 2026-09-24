@@ -40,7 +40,10 @@ async function generateFolio(): Promise<string> {
 
   if (!lastSale) return 'VTA-0001'
 
-  const lastNumber = parseInt(lastSale.folio.split('-')[1])
+  const match = lastSale.folio.match(/VTA-(\d+)/)
+  if (!match) return 'VTA-0001'
+
+  const lastNumber = parseInt(match[1])
   const nextNumber = lastNumber + 1
   return `VTA-${nextNumber.toString().padStart(4, '0')}`
 }
