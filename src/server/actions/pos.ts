@@ -150,19 +150,23 @@ const posSaleSchema = z.object({
 })
 
 async function generateFolio(): Promise<string> {
-  const lastSale = await prisma.sale.findFirst({
-    orderBy: { createdAt: 'desc' },
+  const sales = await prisma.sale.findMany({
     select: { folio: true },
   })
 
-  if (!lastSale) return 'VTA-0001'
+  if (sales.length === 0) return 'VTA-0001'
 
-  const match = lastSale.folio.match(/VTA-(\d+)/)
-  if (!match) return 'VTA-0001'
+  const numbers = sales
+    .map((s) => {
+      const match = s.folio.match(/VTA-(\d+)/)
+      return match ? parseInt(match[1]) : 0
+    })
+    .filter((n) => n > 0)
 
-  const lastNumber = parseInt(match[1])
-  const nextNumber = lastNumber + 1
-  return `VTA-${nextNumber.toString().padStart(4, '0')}`
+  if (numbers.length === 0) return 'VTA-0001'
+
+  const maxNumber = Math.max(...numbers)
+  return `VTA-${(maxNumber + 1).toString().padStart(4, '0')}`
 }
 
 // Sincroniza ventas pendientes con el servidor

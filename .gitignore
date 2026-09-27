@@ -51,3 +51,5 @@ prisma/sync-recipes.ts
 prisma/clear-sales.ts
 prisma/clear-loyalty.ts
 prisma/clear-all.ts
+
+prisma/clear-sales-by-date.ts

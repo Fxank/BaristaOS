@@ -16,7 +16,8 @@
     "db:clear:sales": "tsx prisma/clear-sales.ts",
     "db:clear:loyalty": "tsx prisma/clear-loyalty.ts",
     "db:clear:all": "tsx prisma/clear-all.ts",
-    "db:sync:recipes": "tsx prisma/sync-recipes.ts"
+    "db:sync:recipes": "tsx prisma/sync-recipes.ts",
+    "db:clear:sales:date": "tsx prisma/clear-sales-by-date.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
