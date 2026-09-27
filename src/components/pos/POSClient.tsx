@@ -42,6 +42,7 @@ export function POSClient({ userName }: POSClientProps) {
     lastSync,
     sync,
     saveSaleLocally,
+    clearPending,
   } = usePOSSync()
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -364,6 +365,7 @@ export function POSClient({ userName }: POSClientProps) {
         pendingCount={pendingCount}
         lastSync={lastSync}
         onSync={sync}
+        onClearPending={clearPending ?? (() => {})}
       />
 
       {successMessage && (

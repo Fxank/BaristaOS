@@ -108,6 +108,29 @@ export function usePOSSync() {
     }
   }
 
+  async function clearPending() {
+    if (
+      !confirm(
+        '¿Borrar todas las ventas pendientes? Esta acción no se puede deshacer.'
+      )
+    )
+      return
+    await db.pendingSales.clear()
+    const remaining = await db.pendingSales.toArray()
+    setPendingCount(remaining.filter((s) => !s.syncedAt).length)
+  }
+
+  return {
+    recipes,
+    isOnline,
+    isSyncing,
+    pendingCount,
+    lastSync,
+    sync: doSync,
+    saveSaleLocally,
+    clearPending,
+  }
+
   return {
     recipes,
     isOnline,
