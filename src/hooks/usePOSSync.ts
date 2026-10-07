@@ -20,7 +20,6 @@ export function usePOSSync() {
       doSync()
     }
     const handleOffline = () => setIsOnline(false)
-
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     return () => {
@@ -40,7 +39,7 @@ export function usePOSSync() {
       setPendingCount(all.filter((s) => !s.syncedAt).length)
     }
     countPending()
-    const interval = setInterval(countPending, 5000)
+    const interval = setInterval(countPending, 3000)
     return () => clearInterval(interval)
   }, [])
 
@@ -58,14 +57,13 @@ export function usePOSSync() {
         setRecipes(posData.data)
       }
 
-      // 2. Sincronizar ventas pendientes
+      // 2. Sincronizar ventas pendientes — todas de una vez
       const all = await db.pendingSales.toArray()
       const pending = all.filter((s) => !s.syncedAt)
 
       if (pending.length > 0) {
         console.log(`Sincronizando ${pending.length} ventas pendientes...`)
         const result = await syncPendingSales(pending)
-        console.log('Resultado sincronización:', result)
 
         if (result.success && result.results) {
           for (const r of result.results) {
@@ -103,8 +101,10 @@ export function usePOSSync() {
     })
     setPendingCount((prev) => prev + 1)
 
-    if (navigator.onLine) {
-      await doSync()
+    // Intentar sincronizar inmediatamente si hay internet
+    // Sin bloquear — si ya hay una sync en curso, se reintentará
+    if (navigator.onLine && !syncRef.current) {
+      doSync()
     }
   }
 
@@ -120,15 +120,9 @@ export function usePOSSync() {
     setPendingCount(remaining.filter((s) => !s.syncedAt).length)
   }
 
-  return {
-    recipes,
-    isOnline,
-    isSyncing,
-    pendingCount,
-    lastSync,
-    sync: doSync,
-    saveSaleLocally,
-    clearPending,
+  async function getPendingSales(): Promise<PendingSale[]> {
+    const all = await db.pendingSales.toArray()
+    return all.filter((s) => !s.syncedAt)
   }
 
   return {
@@ -139,5 +133,7 @@ export function usePOSSync() {
     lastSync,
     sync: doSync,
     saveSaleLocally,
+    clearPending,
+    getPendingSales,
   }
 }

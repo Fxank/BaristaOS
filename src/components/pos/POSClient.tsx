@@ -71,6 +71,12 @@ export function POSClient({ userName }: POSClientProps) {
     cardId: string
   } | null>(null)
 
+  const [lastSale, setLastSale] = useState<{
+    total: number
+    items: { name: string; size: string; quantity: number; price: number }[]
+    paymentMethod: string
+  } | null>(null)
+
   // Mantener useEffect para futuras funcionalidades
   useEffect(() => {}, [])
 
@@ -308,9 +314,28 @@ export function POSClient({ userName }: POSClientProps) {
       })),
     }
 
+    // Guardar ticket antes de limpiar carrito
+    const ticketItems = cart.map((item) => ({
+      name: item.recipeName,
+      size: item.variantSize,
+      quantity: item.quantity,
+      price: item.unitPrice,
+    }))
+    const ticketTotal = cart.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0
+    )
+
     await saveSaleLocally(saleData)
 
-    // Si hay lealtad y hay internet, consultar el estado actualizado
+    // Mostrar ticket
+    setLastSale({
+      total: ticketTotal,
+      items: ticketItems,
+      paymentMethod,
+    })
+
+    // Lealtad
     if (loyaltyStatus === 'found' && loyaltyPhone && navigator.onLine) {
       try {
         const { getLoyaltyCardByPhone } =
@@ -319,7 +344,7 @@ export function POSClient({ userName }: POSClientProps) {
         if (result.success && result.data) {
           const card = result.data
           const stampsOnCard = card.stamps % 10
-          const canRedeem = card.stamps > 0 && card.stamps % 10 === 0
+          const canRedeem = card.stamps >= 10
           setLoyaltyResult({
             name: card.name,
             stamps: card.stamps,
@@ -331,16 +356,6 @@ export function POSClient({ userName }: POSClientProps) {
       } catch (e) {
         console.error('Error fetching loyalty result:', e)
       }
-    }
-
-    const total = cart.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0
-    )
-
-    if (!loyaltyResult) {
-      setSuccessMessage(`✅ Venta registrada — ${formatCurrency(total)}`)
-      setTimeout(() => setSuccessMessage(''), 3000)
     }
 
     setCart([])
@@ -486,6 +501,57 @@ export function POSClient({ userName }: POSClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Ticket de confirmación */}
+      {lastSale && !loyaltyResult && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="bg-card border-border w-full max-w-sm space-y-4 rounded-2xl border p-5">
+            <div className="text-center">
+              <p className="text-2xl">✅</p>
+              <p className="text-foreground mt-1 text-lg font-bold">
+                Venta registrada
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {lastSale.paymentMethod === 'CASH'
+                  ? '💵 Efectivo'
+                  : '📱 Transferencia'}
+              </p>
+            </div>
+
+            <div className="border-border divide-border divide-y rounded-xl border">
+              {lastSale.items.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-3 py-2"
+                >
+                  <div>
+                    <p className="text-foreground text-sm font-medium">
+                      {item.name}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {item.size} × {item.quantity}
+                    </p>
+                  </div>
+                  <p className="text-foreground text-sm font-semibold">
+                    {formatCurrency(item.price * item.quantity)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-border flex items-center justify-between border-t pt-3">
+              <span className="text-foreground font-bold">Total</span>
+              <span className="text-foreground text-xl font-bold">
+                {formatCurrency(lastSale.total)}
+              </span>
+            </div>
+
+            <Button className="w-full" onClick={() => setLastSale(null)}>
+              Nueva venta
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de resultado de lealtad */}
       {loyaltyResult && (
