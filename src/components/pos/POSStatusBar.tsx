@@ -1,6 +1,14 @@
 'use client'
 
-import { Wifi, WifiOff, RefreshCw, Coffee, LogOut, Trash2 } from 'lucide-react'
+import {
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Coffee,
+  LogOut,
+  Trash2,
+  ClipboardList,
+} from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
 interface POSStatusBarProps {
@@ -11,6 +19,7 @@ interface POSStatusBarProps {
   lastSync: Date | null
   onSync: () => void
   onClearPending: () => void
+  onViewPending: () => void
 }
 
 export function POSStatusBar({
@@ -20,6 +29,7 @@ export function POSStatusBar({
   pendingCount,
   onSync,
   onClearPending,
+  onViewPending,
 }: Omit<POSStatusBarProps, 'lastSync'> & { lastSync: Date | null }) {
   return (
     <div className="bg-sidebar flex items-center justify-between px-4 py-2">
@@ -60,6 +70,14 @@ export function POSStatusBar({
               <RefreshCw
                 className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`}
               />
+            </button>
+
+            <button
+              onClick={onViewPending}
+              className="text-sidebar-muted hover:text-sidebar-foreground"
+              title="Ver ventas pendientes"
+            >
+              <ClipboardList className="h-4 w-4" />
             </button>
 
             <button

@@ -11,6 +11,7 @@ import { findOrCreateLoyaltyCard } from '@/server/actions/loyalty'
 import { redeemReward } from '@/server/actions/loyalty'
 import { Star, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { POSPendingModal } from '@/components/pos/POSPendingModal'
 
 export interface CartItem {
   localId: string
@@ -76,6 +77,8 @@ export function POSClient({ userName }: POSClientProps) {
     items: { name: string; size: string; quantity: number; price: number }[]
     paymentMethod: string
   } | null>(null)
+
+  const [showPending, setShowPending] = useState(false)
 
   // Mantener useEffect para futuras funcionalidades
   useEffect(() => {}, [])
@@ -381,6 +384,7 @@ export function POSClient({ userName }: POSClientProps) {
         lastSync={lastSync}
         onSync={sync}
         onClearPending={clearPending ?? (() => {})}
+        onViewPending={() => setShowPending(true)}
       />
 
       {successMessage && (
@@ -630,6 +634,8 @@ export function POSClient({ userName }: POSClientProps) {
           </div>
         </div>
       )}
+
+      {showPending && <POSPendingModal onClose={() => setShowPending(false)} />}
     </div>
   )
 }
